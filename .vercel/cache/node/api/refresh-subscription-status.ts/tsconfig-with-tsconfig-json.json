@@ -1,0 +1,6 @@
+{
+	"extends": "../../../../../tsconfig.json",
+	"include": [
+		"../../../../../api/refresh-subscription-status.ts"
+	]
+}

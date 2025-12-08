@@ -1,0 +1,44 @@
+.auth-button {
+  padding: 14px 32px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.auth-button-primary {
+  background: rgba(255, 255, 255, 0.95);
+  color: #000;
+  border-color: rgba(255, 255, 255, 0.95);
+}
+
+.auth-button-primary:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.auth-button-secondary {
+  background: rgba(0, 0, 0, 0.2);
+  color: rgba(255, 255, 255, 0.95);
+  border-color: rgba(255, 255, 255, 0.9);
+}
+
+.auth-button-secondary:hover {
+  background: rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 1);
+  transform: translateY(-2px);
+}
+
+.auth-button:active {
+  transform: translateY(0);
+}
+

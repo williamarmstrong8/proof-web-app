@@ -1,0 +1,90 @@
+.post-grid-section {
+  width: 100%;
+}
+
+.post-grid-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: hsl(var(--foreground));
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+}
+
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  width: 100%;
+}
+
+.post-item {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: hsl(var(--muted));
+  position: relative;
+}
+
+.post-image-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.post-image-container:hover .post-image {
+  transform: scale(1.05);
+}
+
+.post-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+  pointer-events: none;
+}
+
+.post-image-container:hover .post-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.post-date {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: color 0.3s ease;
+}
+
+.post-image-container:hover .post-date {
+  color: rgba(255, 255, 255, 1);
+}
+
+@media (max-width: 768px) {
+  .post-grid {
+    gap: 1px;
+  }
+
+  .post-grid-title {
+    font-size: 20px;
+    margin-bottom: 16px;
+  }
+}
+

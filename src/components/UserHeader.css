@@ -1,0 +1,29 @@
+.user-header {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.user-header-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.user-greeting {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: #000;
+  margin: 0;
+  line-height: 1.1;
+}
+
+.user-subtitle {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0;
+}
+

@@ -1,0 +1,115 @@
+.social-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.social-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px;
+}
+
+.social-header {
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid hsl(var(--border));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.social-header-left {
+  flex: 1;
+}
+
+.social-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: hsl(var(--foreground));
+  margin: 0 0 8px 0;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.social-subtitle {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+.social-main {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.social-feed-container {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .social-main {
+    flex-direction: column;
+    gap: 24px;
+  }
+}
+
+.social-add-friends-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground));
+  border-radius: 0;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.social-add-friends-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@media (max-width: 768px) {
+  .social-content {
+    padding: 20px 16px;
+  }
+
+  .social-header {
+    flex-direction: column;
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+    gap: 16px;
+  }
+
+  .social-subtitle {
+    font-size: 14px;
+  }
+
+  .social-add-friends-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

@@ -1,0 +1,155 @@
+.profile-header {
+  width: 100%;
+  padding-bottom: 24px;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.profile-header-top {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 20px;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px solid hsl(var(--border));
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--secondary));
+}
+
+.profile-avatar-initial {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.profile-stats {
+  display: flex;
+  gap: 32px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.profile-stat-value {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  line-height: 1;
+}
+
+.profile-stat-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-info {
+  margin-bottom: 20px;
+}
+
+.profile-name {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.profile-username {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  margin: 0 0 12px 0;
+}
+
+.profile-bio {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: hsl(var(--foreground));
+  margin: 0;
+  line-height: 1.6;
+}
+
+.profile-actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.profile-edit-button,
+.profile-add-friends-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  background: transparent;
+  color: hsl(var(--foreground));
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-edit-button:hover,
+.profile-add-friends-button:hover {
+  background: hsl(var(--secondary));
+  border-color: hsl(var(--foreground));
+}
+
+@media (max-width: 768px) {
+  .profile-header-top {
+    gap: 24px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .profile-avatar-initial {
+    font-size: 26px;
+  }
+
+  .profile-stats {
+    gap: 24px;
+  }
+
+  .profile-stat-value {
+    font-size: 20px;
+  }
+
+  .profile-name {
+    font-size: 20px;
+  }
+}
+

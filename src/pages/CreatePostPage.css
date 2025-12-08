@@ -1,0 +1,212 @@
+.create-post-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.create-post-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.create-post-back-button {
+  background: transparent;
+  border: none;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.create-post-back-button:hover {
+  opacity: 0.7;
+  transform: translateX(-4px);
+}
+
+.create-post-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: hsl(var(--foreground));
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.create-post-next-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.create-post-next-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.create-post-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 48px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.create-post-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+  width: 100%;
+  max-width: 900px;
+}
+
+.create-post-option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 32px;
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.create-post-option:hover {
+  border-color: hsl(var(--foreground));
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.create-post-option-icon {
+  color: hsl(var(--foreground));
+  transition: all 0.3s ease;
+}
+
+.create-post-option:hover .create-post-option-icon {
+  transform: scale(1.1);
+}
+
+.create-post-option-label {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+}
+
+.create-post-option-description {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.5;
+}
+
+.create-post-preview {
+  width: 100%;
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.create-post-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  overflow: hidden;
+  background: hsl(var(--muted));
+}
+
+.create-post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.create-post-remove-button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  border: none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.create-post-remove-button:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: scale(1.1);
+}
+
+.create-post-preview-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 768px) {
+  .create-post-content {
+    padding: 32px 16px;
+  }
+
+  .create-post-options {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .create-post-option {
+    padding: 40px 24px;
+  }
+
+  .create-post-header {
+    padding: 20px 16px 16px;
+  }
+
+  .create-post-title {
+    font-size: 24px;
+  }
+}
+

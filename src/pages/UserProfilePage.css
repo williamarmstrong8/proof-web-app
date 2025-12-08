@@ -1,0 +1,49 @@
+.user-profile-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.user-profile-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px;
+}
+
+.user-profile-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  margin-top: 32px;
+}
+
+.user-profile-section-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: hsl(var(--foreground));
+  margin: 0 0 24px 0;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .user-profile-content {
+    padding: 20px 16px;
+  }
+
+  .user-profile-sections {
+    gap: 32px;
+    margin-top: 24px;
+  }
+
+  .user-profile-section-title {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+}
+

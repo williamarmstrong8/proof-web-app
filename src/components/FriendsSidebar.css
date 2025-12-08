@@ -1,0 +1,27 @@
+.friends-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+}
+
+.friends-sidebar-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: hsl(var(--foreground));
+  margin: 0 0 20px 0;
+  text-transform: uppercase;
+}
+
+.friends-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 1024px) {
+  .friends-sidebar {
+    display: none;
+  }
+}
+

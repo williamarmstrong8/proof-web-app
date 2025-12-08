@@ -1,0 +1,75 @@
+.challenges-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.challenges-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px;
+}
+
+.challenges-header {
+  margin-bottom: 48px;
+  max-width: 800px;
+}
+
+.challenges-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: clamp(40px, 6vw, 64px);
+  font-weight: 900;
+  letter-spacing: -2px;
+  color: hsl(var(--foreground));
+  margin: 0 0 20px 0;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.challenges-description {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+  line-height: 1.7;
+  max-width: 700px;
+}
+
+.challenges-explore {
+  width: 100%;
+}
+
+.challenges-explore-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: hsl(var(--foreground));
+  margin: 0 0 32px 0;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .challenges-content {
+    padding: 20px 16px;
+  }
+
+  .challenges-header {
+    margin-bottom: 32px;
+  }
+
+  .challenges-description {
+    font-size: 16px;
+  }
+
+  .challenges-explore-title {
+    font-size: 24px;
+    margin-bottom: 24px;
+  }
+}
+

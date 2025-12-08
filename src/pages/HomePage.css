@@ -1,0 +1,30 @@
+.homepage {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.homepage-content {
+  flex: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px;
+}
+
+.homepage-main {
+  margin-top: 32px;
+}
+
+@media (max-width: 768px) {
+  .homepage-content {
+    padding: 20px 16px;
+  }
+  
+  .homepage-main {
+    margin-top: 24px;
+  }
+}
+

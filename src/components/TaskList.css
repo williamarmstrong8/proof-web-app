@@ -1,0 +1,72 @@
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.task-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.task-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.task-section-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  color: #000;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.task-add-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground));
+  border-radius: 0;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.task-add-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.task-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .task-section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .task-add-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+

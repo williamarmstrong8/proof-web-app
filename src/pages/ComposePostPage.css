@@ -1,0 +1,150 @@
+.compose-post-page {
+  min-height: 100vh;
+  background: hsl(var(--background));
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.compose-post-header {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.compose-post-back-button {
+  background: transparent;
+  border: none;
+  color: hsl(var(--foreground));
+  cursor: pointer;
+  padding: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  border-radius: 0;
+}
+
+.compose-post-back-button:hover {
+  opacity: 0.7;
+  transform: translateX(-4px);
+}
+
+.compose-post-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  color: hsl(var(--foreground));
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.compose-post-publish-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.compose-post-publish-button:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.compose-post-content {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.compose-post-image-container {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  overflow: hidden;
+  background: hsl(var(--muted));
+}
+
+.compose-post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.compose-post-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.compose-post-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.compose-post-input,
+.compose-post-textarea {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  padding: 14px 16px;
+  border: 2px solid hsl(var(--border));
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border-radius: 0;
+  transition: all 0.3s ease;
+  width: 100%;
+  resize: vertical;
+}
+
+.compose-post-input:focus,
+.compose-post-textarea:focus {
+  outline: none;
+  border-color: hsl(var(--foreground));
+}
+
+.compose-post-textarea {
+  min-height: 120px;
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .compose-post-header {
+    padding: 20px 16px 16px;
+  }
+
+  .compose-post-title {
+    font-size: 24px;
+  }
+
+  .compose-post-content {
+    padding: 24px 16px;
+    gap: 24px;
+  }
+}
+

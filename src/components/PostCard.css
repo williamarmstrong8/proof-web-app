@@ -1,0 +1,240 @@
+.post-card {
+  background: hsl(var(--card));
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.post-card:hover {
+  border-color: hsl(var(--foreground));
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.post-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.post-user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.3s ease;
+}
+
+.post-user-info:hover {
+  opacity: 0.7;
+}
+
+.post-user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid hsl(var(--border));
+}
+
+.post-user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.post-user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.post-user-name {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.post-verified-icon {
+  color: hsl(var(--foreground));
+  flex-shrink: 0;
+}
+
+.post-user-username {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+}
+
+.post-timestamp {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.post-task-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: hsl(var(--muted));
+  border-bottom: 2px solid hsl(var(--border));
+}
+
+.post-task-label {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.post-task-name {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 14px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.post-image-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: hsl(var(--muted));
+}
+
+.post-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.post-card:hover .post-image {
+  transform: scale(1.02);
+}
+
+.post-proof-overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.post-proof-icon {
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.post-proof-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 16px 20px;
+  border-top: 2px solid hsl(var(--border));
+}
+
+.post-action-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+.post-action-button:hover {
+  opacity: 0.7;
+}
+
+.post-action-button:active {
+  transform: scale(0.95);
+}
+
+.post-action-icon {
+  color: hsl(var(--foreground));
+  transition: all 0.3s ease;
+}
+
+.post-action-button:hover .post-action-icon {
+  transform: scale(1.1);
+}
+
+.post-action-count {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 768px) {
+  .post-card-header {
+    padding: 14px 16px;
+  }
+
+  .post-user-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .post-user-name {
+    font-size: 14px;
+  }
+
+  .post-user-username {
+    font-size: 12px;
+  }
+
+  .post-task-badge {
+    padding: 10px 16px;
+  }
+
+  .post-actions {
+    padding: 14px 16px;
+    gap: 20px;
+  }
+
+  .post-proof-overlay {
+    top: 8px;
+    right: 8px;
+    padding: 6px 10px;
+  }
+
+  .post-proof-text {
+    font-size: 11px;
+  }
+}
+
