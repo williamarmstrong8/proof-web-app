@@ -1299,21 +1299,30 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         return { error: null, data: [] }
       }
 
-      const query = `%${searchQuery.toLowerCase()}%`
+      const searchTerm = searchQuery.toLowerCase().trim()
+      const pattern = `%${searchTerm}%`
 
+      console.log('[WebsiteContext] Searching for:', searchTerm)
+
+      // Search ONLY username, first_name, and last_name (NOT email)
+      // Email causes false positives (e.g., "c" matches "user@company.com")
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('id', user.id)
-        .or(`username.ilike.${query},first_name.ilike.${query},last_name.ilike.${query},email.ilike.${query}`)
+        .or(`username.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`)
         .limit(20)
 
       if (error) {
+        console.error('[WebsiteContext] Search error:', error)
         return { error: new Error(error.message) }
       }
 
+      console.log('[WebsiteContext] Found', data?.length || 0, 'results')
+
       return { error: null, data: data as Profile[] || [] }
     } catch (err) {
+      console.error('[WebsiteContext] Unexpected search error:', err)
       return { error: err instanceof Error ? err : new Error('Failed to search users') }
     }
   }, [user])

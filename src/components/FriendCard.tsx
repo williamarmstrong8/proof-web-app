@@ -43,7 +43,7 @@ export function FriendCard({ friend }: FriendCardProps) {
         <span className="friend-username">{friend.username}</span>
         <div className="friend-streak">
           <span className="friend-streak-label">Streak:</span>
-          <span className="friend-streak-value">{friend.streak} days</span>
+          <span className="friend-streak-value">{friend.streak} {friend.streak === 1 ? 'day' : 'days'}</span>
         </div>
       </div>
     </div>

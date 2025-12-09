@@ -42,7 +42,7 @@ export function AddFriendsPage() {
   // Search for users as the query changes (with debounce)
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
-      if (searchQuery.trim().length < 2) {
+      if (searchQuery.trim().length < 1) {
         setSearchResults([])
         return
       }
@@ -54,7 +54,7 @@ export function AddFriendsPage() {
         setSearchResults(result.data)
       }
       setIsSearching(false)
-    }, 300) // 300ms debounce
+    }, 150) // 150ms debounce for faster response
 
     return () => clearTimeout(timeoutId)
   }, [searchQuery, searchUsers])
@@ -188,7 +188,7 @@ export function AddFriendsPage() {
             <input
               type="text"
               className="add-friends-search-input"
-              placeholder="Search by name, username, or email..."
+              placeholder="Search by name or username..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -246,48 +246,8 @@ export function AddFriendsPage() {
           </div>
         )}
 
-        {/* Outgoing Friend Requests Section - Show requests you've sent */}
-        {outgoingRequests.length > 0 && (
-          <div className="add-friends-section">
-            <h2 className="add-friends-section-title">
-              Sent Requests ({outgoingRequests.length})
-            </h2>
-            <div className="add-friends-list">
-              {outgoingRequests.map((request) => {
-                const user = request.profile
-                return (
-                  <div key={user.id} className="add-friends-user-card">
-                    <img 
-                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}`} 
-                      alt={getDisplayName(user)}
-                      className="add-friends-user-avatar"
-                    />
-                    <div className="add-friends-user-info">
-                      <div className="add-friends-user-name-row">
-                        <span className="add-friends-user-name">{getDisplayName(user)}</span>
-                      </div>
-                      <span className="add-friends-user-username">@{user.username || 'no-username'}</span>
-                      {user.caption && (
-                        <span className="add-friends-user-caption">{user.caption}</span>
-                      )}
-                    </div>
-                    <button
-                      className="add-friends-add-button add-friends-add-button-requested"
-                      onClick={() => handleUnfriendOrCancel(user.id)}
-                      disabled={actionInProgress === user.id}
-                    >
-                      <Clock size={16} />
-                      <span>Requested</span>
-                </button>
-              </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Search Results Section */}
-        {searchQuery.trim().length >= 2 && (
+        {searchQuery.trim().length >= 1 && (
           <div className="add-friends-section">
             <h2 className="add-friends-section-title">
               {isSearching ? 'Searching...' : `Search Results (${usersWithStatus.length})`}

@@ -70,7 +70,7 @@ export function HabitHistory({ habits }: HabitHistoryProps) {
               <div className="habit-header">
                 <h3 className="habit-name">{habit.name}</h3>
                 <div className="habit-stats">
-                  <span className="habit-streak">{habit.streak} day streak</span>
+                  <span className="habit-streak">{habit.streak} {habit.streak === 1 ? 'day' : 'days'} streak</span>
                   <span className="habit-total">{habit.total} total</span>
                 </div>
               </div>
