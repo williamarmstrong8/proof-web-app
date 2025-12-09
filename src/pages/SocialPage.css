@@ -83,12 +83,30 @@
   transition: all 0.3s ease;
   white-space: nowrap;
   flex-shrink: 0;
+  position: relative;
 }
 
 .social-add-friends-button:hover {
   opacity: 0.9;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.social-add-friends-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: hsl(0, 72%, 51%);
+  color: white;
+  border-radius: 10px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 4px;
 }
 
 @media (max-width: 768px) {

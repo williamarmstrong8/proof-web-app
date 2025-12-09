@@ -24,12 +24,42 @@
   border: 2px solid hsl(var(--border));
   border-radius: 0;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .habit-item:hover {
   border-color: hsl(var(--foreground));
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Bronze tier (default) - no special styling */
+.habit-item-bronze {
+  border-color: hsl(var(--border));
+}
+
+/* Silver tier */
+.habit-item-silver {
+  border-color: #c0c0c0;
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, rgba(192, 192, 192, 0.05) 100%);
+  box-shadow: 0 2px 8px rgba(192, 192, 192, 0.2);
+}
+
+.habit-item-silver:hover {
+  border-color: #a0a0a0;
+  box-shadow: 0 4px 16px rgba(192, 192, 192, 0.3);
+}
+
+/* Gold tier */
+.habit-item-gold {
+  border-color: #ffd700;
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, rgba(255, 215, 0, 0.08) 100%);
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.25);
+}
+
+.habit-item-gold:hover {
+  border-color: #ffed4e;
+  box-shadow: 0 4px 16px rgba(255, 215, 0, 0.4);
 }
 
 .habit-header {
@@ -85,6 +115,22 @@
   height: 100%;
   transition: width 0.3s ease;
   border-radius: 0;
+  background-color: hsl(var(--foreground));
+}
+
+/* Bronze tier progress bar */
+.habit-progress-bar-bronze {
+  background-color: hsl(var(--foreground));
+}
+
+/* Silver tier progress bar */
+.habit-progress-bar-silver {
+  background: linear-gradient(90deg, #c0c0c0 0%, #e0e0e0 100%);
+}
+
+/* Gold tier progress bar */
+.habit-progress-bar-gold {
+  background: linear-gradient(90deg, #ffd700 0%, #ffed4e 100%);
 }
 
 @media (max-width: 768px) {

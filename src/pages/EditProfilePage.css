@@ -366,6 +366,31 @@
   background: transparent;
 }
 
+.edit-profile-signout-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 12px 24px;
+  background: transparent;
+  color: hsl(var(--destructive));
+  border: 2px solid hsl(var(--destructive));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+}
+
+.edit-profile-signout-button:hover {
+  background: hsl(var(--destructive));
+  color: hsl(var(--background));
+  transform: translateY(-2px);
+}
+
 @media (max-width: 768px) {
   .edit-profile-wrapper {
     padding: 0;

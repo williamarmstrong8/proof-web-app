@@ -1,102 +1,271 @@
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { BottomNav } from '../components/BottomNav'
 import { UserProfileHeader } from '../components/UserProfileHeader'
 import { PostGrid } from '../components/PostGrid'
 import { HabitHistory } from '../components/HabitHistory'
+import { supabase } from '../lib/supabase'
+import type { Profile, Post, Task } from '../lib/WebsiteContext'
 import './UserProfilePage.css'
-
-// Mock user data - in real app, this would come from an API based on userId
-const mockUsers: Record<string, any> = {
-  'sarahchen': {
-    id: 'sarahchen',
-    name: 'Sarah Chen',
-    username: '@sarahchen',
-    bio: 'Fitness enthusiast | Habit tracker | Proof over perfection',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
-    stats: {
-      posts: 32,
-      habits: 6,
-      streak: 45,
-    },
-    posts: [
-      { id: 'p1', image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=400&fit=crop', date: '2024-01-15' },
-      { id: 'p2', image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=400&h=400&fit=crop', date: '2024-01-14' },
-      { id: 'p3', image: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400&h=400&fit=crop', date: '2024-01-13' },
-      { id: 'p4', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop', date: '2024-01-12' },
-      { id: 'p5', image: 'https://images.unsplash.com/photo-1538805060514-97d9cc90893b?w=400&h=400&fit=crop', date: '2024-01-11' },
-      { id: 'p6', image: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=400&h=400&fit=crop', date: '2024-01-10' },
-    ],
-    habits: [
-      { id: 'h1', name: 'Morning Run', streak: 45, total: 50, color: '#000' },
-      { id: 'h2', name: 'Read for 30 minutes', streak: 38, total: 45, color: '#000' },
-      { id: 'h3', name: 'Meditation', streak: 30, total: 40, color: '#000' },
-      { id: 'h4', name: 'Water intake goal', streak: 25, total: 30, color: '#000' },
-    ],
-  },
-  'marcusj': {
-    id: 'marcusj',
-    name: 'Marcus Johnson',
-    username: '@marcusj',
-    bio: 'Building better habits one day at a time',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-    stats: {
-      posts: 18,
-      habits: 5,
-      streak: 22,
-    },
-    posts: [
-      { id: 'p1', image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=400&h=400&fit=crop', date: '2024-01-15' },
-      { id: 'p2', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop', date: '2024-01-12' },
-      { id: 'p3', image: 'https://images.unsplash.com/photo-1538805060514-97d9cc90893b?w=400&h=400&fit=crop', date: '2024-01-10' },
-    ],
-    habits: [
-      { id: 'h1', name: 'Read for 30 minutes', streak: 22, total: 30, color: '#000' },
-      { id: 'h2', name: 'Exercise', streak: 15, total: 25, color: '#000' },
-      { id: 'h3', name: 'Journaling', streak: 10, total: 15, color: '#000' },
-    ],
-  },
-  'emmar': {
-    id: 'emmar',
-    name: 'Emma Rodriguez',
-    username: '@emmar',
-    bio: 'Mindful living and continuous improvement',
-    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-    stats: {
-      posts: 28,
-      habits: 7,
-      streak: 35,
-    },
-    posts: [
-      { id: 'p1', image: 'https://images.unsplash.com/photo-1576678927484-cc907957088c?w=400&h=400&fit=crop', date: '2024-01-15' },
-      { id: 'p2', image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=400&h=400&fit=crop', date: '2024-01-14' },
-      { id: 'p3', image: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=400&h=400&fit=crop', date: '2024-01-13' },
-      { id: 'p4', image: 'https://images.unsplash.com/photo-1538805060514-97d9cc90893b?w=400&h=400&fit=crop', date: '2024-01-12' },
-    ],
-    habits: [
-      { id: 'h1', name: 'Meditation', streak: 35, total: 40, color: '#000' },
-      { id: 'h2', name: 'Yoga', streak: 28, total: 35, color: '#000' },
-      { id: 'h3', name: 'Reading', streak: 20, total: 25, color: '#000' },
-    ],
-  },
-}
 
 export function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>()
   const navigate = useNavigate()
 
-  // Get user data - in real app, fetch from API
-  const userData = userId ? mockUsers[userId] : null
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [posts, setPosts] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!userData) {
+  useEffect(() => {
+    if (!userId) {
+      setError('No user ID provided')
+      setLoading(false)
+      return
+    }
+
+    // Remove @ if present
+    const username = userId.startsWith('@') ? userId.slice(1) : userId
+
+    const fetchUserData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+
+        // Fetch profile by username
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('username', username)
+          .maybeSingle()
+
+        if (profileError) {
+          throw profileError
+        }
+
+        if (!profileData) {
+          setError('User not found')
+          setLoading(false)
+          return
+        }
+
+        setProfile(profileData as Profile)
+
+        // Fetch tasks for this user
+        const { data: tasksData, error: tasksError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('owner_id', profileData.id)
+          .order('created_at', { ascending: false })
+
+        if (tasksError) {
+          console.error('[UserProfilePage] Error fetching tasks:', tasksError)
+          console.error('[UserProfilePage] This might be due to RLS policies. Make sure users can view other users\' tasks.')
+          setTasks([])
+        } else {
+          // Get completions for tasks to calculate streaks
+          const taskIds = (tasksData || []).map(t => t.id)
+          if (taskIds.length > 0) {
+            const { data: completionsData } = await supabase
+              .from('task_completions')
+              .select('task_id, completed_on')
+              .eq('user_id', profileData.id)
+              .in('task_id', taskIds)
+
+            // Calculate streaks and totals for each task
+            const completionsByTask = new Map<number, string[]>()
+            if (completionsData) {
+              completionsData.forEach((c: any) => {
+                if (!completionsByTask.has(c.task_id)) {
+                  completionsByTask.set(c.task_id, [])
+                }
+                completionsByTask.get(c.task_id)!.push(c.completed_on)
+              })
+            }
+
+            // Helper to get local date string (YYYY-MM-DD)
+            const getLocalDateString = (): string => {
+              const now = new Date()
+              const year = now.getFullYear()
+              const month = String(now.getMonth() + 1).padStart(2, '0')
+              const day = String(now.getDate()).padStart(2, '0')
+              return `${year}-${month}-${day}`
+            }
+
+            // Calculate current streak (simplified - same logic as WebsiteContext)
+            const today = getLocalDateString()
+            const calculateStreak = (dates: string[]): number => {
+              if (dates.length === 0) return 0
+              const sortedDates = [...new Set(dates)]
+                .map(d => {
+                  const date = new Date(d)
+                  const year = date.getFullYear()
+                  const month = String(date.getMonth() + 1).padStart(2, '0')
+                  const day = String(date.getDate()).padStart(2, '0')
+                  return `${year}-${month}-${day}`
+                })
+                .sort((a, b) => b.localeCompare(a))
+              const dateSet = new Set(sortedDates)
+              
+              // Calculate yesterday's date string
+              const yesterdayDate = new Date()
+              yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+              const yesterdayYear = yesterdayDate.getFullYear()
+              const yesterdayMonth = String(yesterdayDate.getMonth() + 1).padStart(2, '0')
+              const yesterdayDay = String(yesterdayDate.getDate()).padStart(2, '0')
+              const yesterday = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`
+
+              // Determine starting point for streak calculation:
+              // - If completed today, start from today
+              // - If not completed today but completed yesterday, start from yesterday (streak persists)
+              // - If neither today nor yesterday completed, streak is 0
+              let startDate: Date
+              if (dateSet.has(today)) {
+                startDate = new Date() // Start from today
+              } else if (dateSet.has(yesterday)) {
+                startDate = new Date(yesterdayDate) // Start from yesterday (streak persists)
+              } else {
+                return 0 // No completion today or yesterday - streak is broken
+              }
+
+              let streak = 0
+              let checkDate = new Date(startDate)
+              for (let i = 0; i < 1000; i++) {
+                const checkYear = checkDate.getFullYear()
+                const checkMonth = String(checkDate.getMonth() + 1).padStart(2, '0')
+                const checkDay = String(checkDate.getDate()).padStart(2, '0')
+                const checkDateStr = `${checkYear}-${checkMonth}-${checkDay}`
+                if (dateSet.has(checkDateStr)) {
+                  streak++
+                  checkDate.setDate(checkDate.getDate() - 1)
+                } else {
+                  break
+                }
+              }
+              return streak
+            }
+
+            const tasksWithStreaks: Task[] = (tasksData || []).map((task: any) => {
+              const completions = completionsByTask.get(task.id) || []
+              return {
+                id: task.id.toString(),
+                owner_id: task.owner_id,
+                title: task.title,
+                description: task.description,
+                created_at: task.created_at,
+                updated_at: task.updated_at,
+                current_streak: calculateStreak(completions),
+                total_completions: completions.length,
+              }
+            })
+            setTasks(tasksWithStreaks)
+          } else {
+            setTasks([])
+          }
+        }
+        
+        // Log if no tasks found (for debugging)
+        if (!tasksError && (!tasksData || tasksData.length === 0)) {
+          console.log('[UserProfilePage] No tasks found for user:', profileData.id)
+        }
+
+        // Fetch posts (task completions with photos) for this user
+        const { data: postsData, error: postsError } = await supabase
+          .from('task_completions')
+          .select(`
+            id,
+            photo_url,
+            caption,
+            completed_on,
+            created_at,
+            task_title_snapshot,
+            tasks (
+              title
+            )
+          `)
+          .eq('user_id', profileData.id)
+          .not('photo_url', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (postsError) {
+          console.error('Error fetching posts:', postsError)
+        } else {
+          const userPosts: Post[] = (postsData || []).map((completion: any) => ({
+            id: completion.id.toString(),
+            image: completion.photo_url || '',
+            date: completion.completed_on || completion.created_at,
+            task_title: completion.task_title_snapshot || completion.tasks?.title || 'Task',
+            caption: completion.caption,
+          }))
+          setPosts(userPosts)
+        }
+
+        setLoading(false)
+      } catch (err) {
+        console.error('Error fetching user data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load user data')
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [userId])
+
+  if (loading) {
     return (
       <div className="user-profile-page">
         <div className="user-profile-content">
-          <p>User not found</p>
-          <button onClick={() => navigate('/social')}>Back to Social</button>
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <div className="profile-loading-spinner" style={{ margin: '0 auto' }}></div>
+            <p>Loading profile...</p>
+          </div>
         </div>
+        <BottomNav />
       </div>
     )
   }
+
+  if (error || !profile) {
+    return (
+      <div className="user-profile-page">
+        <div className="user-profile-content">
+          <div style={{ padding: '40px', textAlign: 'center' }}>
+            <p>{error || 'User not found'}</p>
+          <button onClick={() => navigate('/social')}>Back to Social</button>
+          </div>
+        </div>
+        <BottomNav />
+      </div>
+    )
+  }
+
+  // Transform data for UserProfileHeader
+  const displayName = profile.first_name && profile.last_name
+    ? `${profile.first_name} ${profile.last_name}`
+    : profile.username || profile.email || 'User'
+
+  const userData = {
+    name: displayName,
+    username: profile.username ? `@${profile.username}` : '@no-username',
+    avatarUrl: profile.avatar_url || null,
+    bio: profile.caption || 'Tracking habits and sharing moments. Proof over perfection.',
+    stats: {
+      posts: posts.length,
+      habits: tasks.length,
+      streak: Math.max(...tasks.map(t => t.current_streak || 0), 0),
+    },
+  }
+
+  // Transform tasks to habit history format
+  const habits = tasks.map(task => ({
+    id: task.id,
+    name: task.title,
+    streak: task.current_streak || 0,
+    total: task.total_completions || 0,
+    color: '#000',
+  }))
 
   return (
     <div className="user-profile-page">
@@ -104,8 +273,8 @@ export function UserProfilePage() {
         <UserProfileHeader userData={userData} />
         
         <div className="user-profile-sections">
-          <HabitHistory habits={userData.habits} />
-          <PostGrid posts={userData.posts} />
+          <HabitHistory habits={habits} />
+          <PostGrid posts={posts} />
         </div>
       </div>
       
@@ -113,4 +282,3 @@ export function UserProfilePage() {
     </div>
   )
 }
-

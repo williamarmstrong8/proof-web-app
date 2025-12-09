@@ -19,6 +19,25 @@
   gap: 16px;
 }
 
+.friends-empty {
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.friends-empty p {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
+}
+
+.friends-empty-hint {
+  font-size: 12px;
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
 @media (max-width: 1024px) {
   .friends-sidebar {
     display: none;

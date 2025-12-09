@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, LogOut } from 'lucide-react'
 import { useWebsite } from '../lib/WebsiteContext'
+import { useAuth } from '../lib/auth'
 import './EditProfilePage.css'
 
 export function EditProfilePage() {
   const navigate = useNavigate()
   const { profile, loading: profileLoading, updateProfile } = useWebsite()
+  const { logout } = useAuth()
 
   // Form state
   const [formData, setFormData] = useState({
@@ -108,6 +110,11 @@ export function EditProfilePage() {
 
   const handleCancel = () => {
     navigate('/profile')
+  }
+
+  const handleSignOut = async () => {
+    await logout()
+    navigate('/login')
   }
 
   // Show loading spinner while profile is loading
@@ -267,6 +274,18 @@ export function EditProfilePage() {
               <p className="edit-profile-help-text">A short bio or caption about yourself</p>
             </div>
           </div>
+        </div>
+
+        <div className="edit-profile-section">
+          <h2 className="edit-profile-section-title">Account</h2>
+          <button 
+            className="edit-profile-signout-button" 
+            onClick={handleSignOut}
+            type="button"
+          >
+            <LogOut size={18} />
+            Sign Out
+          </button>
         </div>
       </div>
       </div>

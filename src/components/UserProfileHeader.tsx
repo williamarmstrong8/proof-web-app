@@ -1,12 +1,10 @@
-import { ArrowLeft } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import './UserProfileHeader.css'
 
 interface UserData {
   name: string
   username: string
   bio: string
-  avatar: string
+  avatarUrl?: string | null
   stats: {
     posts: number
     habits: number
@@ -19,21 +17,25 @@ interface UserProfileHeaderProps {
 }
 
 export function UserProfileHeader({ userData }: UserProfileHeaderProps) {
-  const navigate = useNavigate()
+  // Get first and last initials
+  const nameParts = userData.name.trim().split(/\s+/)
+  const firstInitial = nameParts[0]?.charAt(0).toUpperCase() || ''
+  const lastInitial = nameParts.length > 1 ? nameParts[nameParts.length - 1]?.charAt(0).toUpperCase() : ''
+  const initials = `${firstInitial}${lastInitial}`
 
   return (
     <div className="user-profile-header">
-      <button className="user-profile-back-button" onClick={() => navigate('/social')}>
-        <ArrowLeft size={24} />
-      </button>
-      
       <div className="user-profile-header-top">
         <div className="user-profile-avatar">
+          {userData.avatarUrl ? (
           <img 
-            src={userData.avatar} 
+              src={userData.avatarUrl} 
             alt={userData.name}
             className="user-profile-avatar-img"
           />
+          ) : (
+            <div className="user-profile-avatar-initial">{initials}</div>
+          )}
         </div>
         
         <div className="user-profile-stats">

@@ -25,18 +25,6 @@ interface CenterButtonProps {
   className?: string
 }
 
-const floatingAnimation = {
-  initial: { y: 0 },
-  animate: {
-    y: [-2, 2, -2] as [number, number, number],
-    transition: {
-      duration: 4,
-      repeat: Infinity,
-      ease: "easeInOut"
-    }
-  }
-}
-
 const DockIconButton = React.forwardRef<HTMLButtonElement, DockIconButtonProps>(
   ({ icon: Icon, label, onClick, className }, ref) => {
     return (
@@ -101,9 +89,8 @@ const CustomDock = React.forwardRef<HTMLDivElement, DockProps>(
     return (
       <div ref={ref} className={cn("w-full flex items-center justify-center p-2", className)}>
         <motion.div
-          initial="initial"
-          animate="animate"
-          variants={floatingAnimation as any}
+          initial={{ y: 0 }}
+          animate={{ y: 0 }}
           className={cn(
             "flex items-center gap-1 p-3 rounded-2xl",
             "backdrop-blur-lg border shadow-lg",

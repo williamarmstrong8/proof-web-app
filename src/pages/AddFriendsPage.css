@@ -96,6 +96,23 @@
   color: hsl(var(--muted-foreground));
 }
 
+.add-friends-search-clear {
+  background: transparent;
+  border: none;
+  color: hsl(var(--muted-foreground));
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.add-friends-search-clear:hover {
+  color: hsl(var(--foreground));
+}
+
 .add-friends-section {
   width: 100%;
   flex: 1;
@@ -189,6 +206,17 @@
   color: hsl(var(--muted-foreground));
 }
 
+.add-friends-user-caption {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .add-friends-add-button {
   display: flex;
   align-items: center;
@@ -224,6 +252,55 @@
   background: transparent;
   color: hsl(var(--muted-foreground));
   border-color: hsl(var(--border));
+}
+
+.add-friends-add-button-friends {
+  background: hsl(142, 71%, 45%);
+  color: white;
+  border-color: hsl(142, 71%, 45%);
+}
+
+.add-friends-add-button-friends:hover:not(:disabled) {
+  background: hsl(142, 71%, 40%);
+  border-color: hsl(142, 71%, 40%);
+}
+
+.add-friends-add-button-requested {
+  background: hsl(48, 96%, 53%);
+  color: hsl(var(--foreground));
+  border-color: hsl(48, 96%, 53%);
+}
+
+.add-friends-add-button-requested:hover:not(:disabled) {
+  background: hsl(48, 96%, 48%);
+  border-color: hsl(48, 96%, 48%);
+}
+
+.add-friends-add-button-accept {
+  background: hsl(217, 91%, 60%);
+  color: white;
+  border-color: hsl(217, 91%, 60%);
+}
+
+.add-friends-add-button-accept:hover:not(:disabled) {
+  background: hsl(217, 91%, 55%);
+  border-color: hsl(217, 91%, 55%);
+}
+
+.add-friends-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.add-friends-empty p {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: hsl(var(--muted-foreground));
+  margin: 0;
 }
 
 @media (max-width: 768px) {

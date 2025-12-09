@@ -126,6 +126,31 @@
   border-color: hsl(var(--foreground));
 }
 
+.profile-signout-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  background: transparent;
+  color: hsl(0, 72%, 51%);
+  border: 2px solid hsl(0, 72%, 51%);
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.profile-signout-button:hover {
+  background: hsl(0, 72%, 51%);
+  color: white;
+}
+
 @media (max-width: 768px) {
   .profile-header-top {
     gap: 24px;
