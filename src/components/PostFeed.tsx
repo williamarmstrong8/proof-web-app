@@ -1,24 +1,9 @@
 import { PostCard } from './PostCard'
+import type { SocialPost } from '../lib/WebsiteContext'
 import './PostFeed.css'
 
-interface User {
-  name: string
-  username: string
-  avatar: string
-}
-
-interface Post {
-  id: string
-  user: User
-  task: string
-  proofImage: string
-  timestamp: string
-  likes: number
-  comments: number
-}
-
 interface PostFeedProps {
-  posts: Post[]
+  posts: SocialPost[]
 }
 
 export function PostFeed({ posts }: PostFeedProps) {

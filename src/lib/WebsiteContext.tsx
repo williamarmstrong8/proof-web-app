@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode, useRef } from 'react'
+import imageCompression from 'browser-image-compression'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
 
@@ -13,6 +14,20 @@ export interface Profile {
   caption: string | null
   created_at: string
   updated_at: string
+}
+
+export interface Friendship {
+  id: string
+  requester_id: string
+  addressee_id: string
+  status: 'requested' | 'confirmed'
+  created_at: string
+  updated_at: string
+}
+
+export interface FriendshipWithProfile extends Friendship {
+  profile: Profile
+  streak?: number // Current streak for this friend (calculated from their task completions)
 }
 
 export interface Task {
@@ -50,21 +65,47 @@ export interface Post {
   caption?: string | null
 }
 
+// Post format for PostFeed/PostCard (includes user info)
+export interface SocialPost {
+  id: string
+  user: {
+    id: string
+    name: string
+    username: string
+    avatar: string
+  }
+  task: string
+  proofImage: string
+  timestamp: string
+  likes: number
+  comments: number
+}
+
 interface WebsiteData {
   profile: Profile | null
   tasks: Task[]
   posts: Post[]
+  friends: FriendshipWithProfile[]
+  incomingRequests: FriendshipWithProfile[]
+  outgoingRequests: FriendshipWithProfile[]
+  friendPosts: SocialPost[]
 }
 
 interface WebsiteContextType {
   profile: Profile | null
   tasks: Task[]
   posts: Post[]
+  friends: FriendshipWithProfile[]
+  incomingRequests: FriendshipWithProfile[]
+  outgoingRequests: FriendshipWithProfile[]
+  friendPosts: SocialPost[]
   loading: boolean
   error: string | null
   refetchProfile: () => Promise<void>
   refetchTasks: () => Promise<void>
   refetchPosts: (userId?: string) => Promise<void>
+  refetchFriendships: () => Promise<void>
+  refetchFriendPosts: () => Promise<void>
   updateProfile: (data: {
     username?: string
     first_name?: string
@@ -74,15 +115,26 @@ interface WebsiteContextType {
     caption?: string
   }) => Promise<{ error: Error | null }>
   createTask: (title: string, description?: string) => Promise<{ error: Error | null; task?: Task }>
+  updateTask: (taskId: string, title: string, description?: string) => Promise<{ error: Error | null }>
   deleteTask: (taskId: string) => Promise<{ error: Error | null }>
   completeTask: (taskId: string, photo: File, caption?: string) => Promise<{ error: Error | null }>
   uncompleteTask: (taskId: string, completionId: string) => Promise<{ error: Error | null }>
+  // Friendship functions
+  sendFriendRequest: (targetUserId: string) => Promise<{ error: Error | null }>
+  acceptFriendRequest: (requesterId: string) => Promise<{ error: Error | null }>
+  unfriendOrCancel: (otherUserId: string) => Promise<{ error: Error | null }>
+  searchUsers: (searchQuery: string) => Promise<{ error: Error | null; data?: Profile[] }>
+  getFriendshipStatus: (otherUserId: string) => 'none' | 'outgoing' | 'incoming' | 'friends'
 }
 
 const defaultWebsiteData: WebsiteData = {
   profile: null,
   tasks: [],
   posts: [],
+  friends: [],
+  incomingRequests: [],
+  outgoingRequests: [],
+  friendPosts: [],
 }
 
 const WebsiteContext = createContext<WebsiteContextType | undefined>(undefined)
@@ -154,30 +206,70 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [setProfileSuccess, setProfileError])
 
+  // Helper function to get today's date in local timezone (YYYY-MM-DD)
+  const getLocalDateString = useCallback((): string => {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }, [])
+
   // Helper function to calculate current streak from completion dates
   const calculateCurrentStreak = useCallback((completionDates: string[]): number => {
     if (completionDates.length === 0) return 0
 
-    // Convert to date strings and sort (most recent first)
+    // Normalize all completion dates to YYYY-MM-DD format (local timezone)
+    // Supabase DATE type returns as YYYY-MM-DD string, so handle directly
     const sortedDates = [...new Set(completionDates)]
-      .map(d => new Date(d).toISOString().split('T')[0])
+      .map(d => {
+        // If it's already a date string in YYYY-MM-DD format, use it directly
+        if (typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d.trim())) {
+          return d.trim()
+        }
+        // Otherwise, parse it and convert to local date string
+        const date = new Date(d)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+      })
       .sort((a, b) => b.localeCompare(a))
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getLocalDateString()
     const dateSet = new Set(sortedDates)
 
-    // If not completed today, streak is 0
-    if (!dateSet.has(today)) {
-      return 0
+    // Calculate yesterday's date string
+    const yesterdayDate = new Date()
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+    const yesterdayYear = yesterdayDate.getFullYear()
+    const yesterdayMonth = String(yesterdayDate.getMonth() + 1).padStart(2, '0')
+    const yesterdayDay = String(yesterdayDate.getDate()).padStart(2, '0')
+    const yesterday = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}`
+
+    // Determine starting point for streak calculation:
+    // - If completed today, start from today
+    // - If not completed today but completed yesterday, start from yesterday (streak persists)
+    // - If neither today nor yesterday completed, streak is 0
+    let startDate: Date
+    if (dateSet.has(today)) {
+      startDate = new Date() // Start from today
+    } else if (dateSet.has(yesterday)) {
+      startDate = new Date(yesterdayDate) // Start from yesterday (streak persists)
+    } else {
+      return 0 // No completion today or yesterday - streak is broken
     }
 
-    // Calculate consecutive days from today backwards
+    // Calculate consecutive days from the start date backwards
     let streak = 0
-    let checkDate = new Date(today)
+    let checkDate = new Date(startDate)
     
     // Check up to 1000 days back (safety limit)
     for (let i = 0; i < 1000; i++) {
-      const checkDateStr = checkDate.toISOString().split('T')[0]
+      const checkYear = checkDate.getFullYear()
+      const checkMonth = String(checkDate.getMonth() + 1).padStart(2, '0')
+      const checkDay = String(checkDate.getDate()).padStart(2, '0')
+      const checkDateStr = `${checkYear}-${checkMonth}-${checkDay}`
       
       if (dateSet.has(checkDateStr)) {
         streak++
@@ -189,7 +281,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
 
     return streak
-  }, [])
+  }, [getLocalDateString])
 
   // Fetch tasks with today's completion status, streaks, and totals
   const fetchTasks = useCallback(async (userId: string): Promise<void> => {
@@ -238,18 +330,46 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       }
 
       // Process the data to include today's completion status, streaks, and totals
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
       const tasksWithStatus = tasksData.map((task: any) => {
         const completions = completionsByTask.get(task.id) || []
         const completionDates = completions.map((c: any) => c.completed_on)
         
         // Find today's completion if it exists
-        const todayCompletion = completions.find(
-          (tc: any) => tc.completed_on === today
-        )
+        // completed_on is stored as DATE type in Supabase, which returns as YYYY-MM-DD string
+        const todayCompletion = completions.find((tc: any) => {
+          if (!tc.completed_on) return false
+          
+          // Supabase DATE type returns as string in YYYY-MM-DD format
+          // Handle both date strings and timestamps, normalize to YYYY-MM-DD
+          let completedDate: string
+          if (typeof tc.completed_on === 'string') {
+            // Remove time portion if present, trim whitespace
+            completedDate = tc.completed_on.split('T')[0].trim()
+          } else {
+            // If it's not a string, convert to date string
+            const date = new Date(tc.completed_on)
+            const year = date.getFullYear()
+            const month = String(date.getMonth() + 1).padStart(2, '0')
+            const day = String(date.getDate()).padStart(2, '0')
+            completedDate = `${year}-${month}-${day}`
+          }
+          
+          return completedDate === today
+        })
 
         // Calculate current streak
         const currentStreak = calculateCurrentStreak(completionDates)
+        
+        // Debug logging for streak calculation
+        if (completionDates.length > 0) {
+          console.log('[WebsiteContext] Streak calculation for task', task.id, ':', {
+            taskTitle: task.title,
+            completionDates,
+            currentStreak,
+            today: getLocalDateString()
+          })
+        }
 
         return {
           id: task.id.toString(),
@@ -273,7 +393,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       console.error('[WebsiteContext] Error fetching tasks:', err)
       // Don't throw - tasks are optional, profile is more important
     }
-  }, [calculateCurrentStreak])
+  }, [calculateCurrentStreak, getLocalDateString])
 
   // Fetch posts (task completions) for a user
   const fetchPosts = useCallback(async (userId?: string): Promise<void> => {
@@ -326,6 +446,283 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Fetch friendships (friends, incoming requests, outgoing requests) - optimized single query
+  const fetchFriendships = useCallback(async (userId: string): Promise<void> => {
+    try {
+      // Single query to get all friendships for this user
+      const { data: friendshipsData, error: friendshipsError } = await supabase
+        .from('friendships')
+        .select('*')
+        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+
+      if (friendshipsError) {
+        console.error('[WebsiteContext] Error fetching friendships:', friendshipsError)
+        setWebsiteData(prev => ({
+          ...prev,
+          friends: [],
+          incomingRequests: [],
+          outgoingRequests: [],
+        }))
+        return
+      }
+
+      if (!friendshipsData || friendshipsData.length === 0) {
+        setWebsiteData(prev => ({
+          ...prev,
+          friends: [],
+          incomingRequests: [],
+          outgoingRequests: [],
+        }))
+        return
+      }
+
+      // Get all user IDs involved in friendships
+      const userIds = new Set<string>()
+      friendshipsData.forEach((f: any) => {
+        if (f.requester_id !== userId) userIds.add(f.requester_id)
+        if (f.addressee_id !== userId) userIds.add(f.addressee_id)
+      })
+
+      // Fetch all profiles in one query
+      const profileIds = Array.from(userIds)
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', profileIds)
+
+      if (profilesError) {
+        console.error('[WebsiteContext] Error fetching friend profiles:', profilesError)
+        // Still set empty arrays on profile error
+        setWebsiteData(prev => ({
+          ...prev,
+          friends: [],
+          incomingRequests: [],
+          outgoingRequests: [],
+        }))
+        return
+      }
+
+      // Create profile map
+      const profileMap = new Map((profilesData || []).map((p: any) => [p.id, p as Profile]))
+
+      // Categorize friendships
+      const friends: FriendshipWithProfile[] = []
+      const incomingRequests: FriendshipWithProfile[] = []
+      const outgoingRequests: FriendshipWithProfile[] = []
+
+      // Get all confirmed friend IDs to fetch their streaks
+      const confirmedFriendIds = friendshipsData
+        .filter((f: any) => f.status === 'confirmed')
+        .map((f: any) => f.requester_id === userId ? f.addressee_id : f.requester_id)
+
+      // Fetch task completions for all confirmed friends to calculate streaks
+      let friendStreaksMap = new Map<string, number>()
+      if (confirmedFriendIds.length > 0) {
+        const { data: friendCompletionsData, error: completionsError } = await supabase
+          .from('task_completions')
+          .select('user_id, completed_on')
+          .in('user_id', confirmedFriendIds)
+          .not('completed_on', 'is', null)
+
+        if (!completionsError && friendCompletionsData) {
+          // Group completions by user_id
+          const completionsByUser = new Map<string, string[]>()
+          friendCompletionsData.forEach((c: any) => {
+            const userId = c.user_id
+            const date = c.completed_on
+            if (!completionsByUser.has(userId)) {
+              completionsByUser.set(userId, [])
+            }
+            completionsByUser.get(userId)!.push(date)
+          })
+
+          // Calculate streak for each friend
+          completionsByUser.forEach((dates, friendUserId) => {
+            const streak = calculateCurrentStreak(dates)
+            friendStreaksMap.set(friendUserId, streak)
+          })
+        }
+      }
+
+      friendshipsData.forEach((f: any) => {
+        const otherUserId = f.requester_id === userId ? f.addressee_id : f.requester_id
+        const profile = profileMap.get(otherUserId)
+
+        if (!profile) return // Skip if profile not found
+
+        const friendship: FriendshipWithProfile = {
+          id: f.id.toString(),
+          requester_id: f.requester_id,
+          addressee_id: f.addressee_id,
+          status: f.status,
+          created_at: f.created_at,
+          updated_at: f.updated_at,
+          profile,
+          streak: f.status === 'confirmed' ? (friendStreaksMap.get(otherUserId) || 0) : undefined,
+        }
+
+        if (f.status === 'confirmed') {
+          friends.push(friendship)
+        } else if (f.status === 'requested') {
+          if (f.addressee_id === userId) {
+            // User is the addressee - incoming request
+            incomingRequests.push(friendship)
+          } else {
+            // User is the requester - outgoing request
+            outgoingRequests.push(friendship)
+          }
+        }
+      })
+
+      setWebsiteData(prev => ({
+        ...prev,
+        friends,
+        incomingRequests,
+        outgoingRequests,
+      }))
+    } catch (err) {
+      console.error('[WebsiteContext] Error fetching friendships:', err)
+      setWebsiteData(prev => ({
+        ...prev,
+        friends: [],
+        incomingRequests: [],
+        outgoingRequests: [],
+      }))
+    }
+  }, [])
+
+  // Fetch posts from friends only
+  const fetchFriendPosts = useCallback(async (userId: string): Promise<void> => {
+    try {
+      // Get friend IDs from confirmed friendships
+      const { data: friendshipsData, error: friendshipsError } = await supabase
+        .from('friendships')
+        .select('requester_id, addressee_id')
+        .eq('status', 'confirmed')
+        .or(`requester_id.eq.${userId},addressee_id.eq.${userId}`)
+
+      if (friendshipsError) {
+        console.error('[WebsiteContext] Error fetching friendships for posts:', friendshipsError)
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      if (!friendshipsData || friendshipsData.length === 0) {
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      // Get all friend IDs
+      const friendIds = new Set<string>()
+      friendshipsData.forEach((f: any) => {
+        if (f.requester_id !== userId) friendIds.add(f.requester_id)
+        if (f.addressee_id !== userId) friendIds.add(f.addressee_id)
+      })
+
+      const friendIdsArray = Array.from(friendIds)
+
+      if (friendIdsArray.length === 0) {
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      // Fetch task completions (posts) from friends
+      const { data: completionsData, error: completionsError } = await supabase
+        .from('task_completions')
+        .select(`
+          id,
+          user_id,
+          photo_url,
+          caption,
+          completed_on,
+          created_at,
+          task_title_snapshot
+        `)
+        .in('user_id', friendIdsArray)
+        .not('photo_url', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (completionsError) {
+        console.error('[WebsiteContext] Error fetching friend posts:', completionsError)
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      if (!completionsData || completionsData.length === 0) {
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      // Fetch profiles for all friends who have posts
+      const postUserIds = [...new Set(completionsData.map((c: any) => c.user_id))]
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', postUserIds)
+
+      if (profilesError) {
+        console.error('[WebsiteContext] Error fetching friend profiles for posts:', profilesError)
+        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+        return
+      }
+
+      // Create profile map
+      const profileMap = new Map((profilesData || []).map((p: any) => [p.id, p as Profile]))
+
+      // Transform to SocialPost format (for PostFeed/PostCard)
+      const friendPosts: SocialPost[] = completionsData
+        .map((completion: any) => {
+          const profile = profileMap.get(completion.user_id)
+          if (!profile) return null
+
+          const displayName = profile.first_name && profile.last_name
+            ? `${profile.first_name} ${profile.last_name}`
+            : profile.username || profile.email || 'Unknown User'
+
+          // Calculate relative timestamp (e.g., "2 hours ago")
+          const completionDate = new Date(completion.created_at || completion.completed_on)
+          const now = new Date()
+          const diffMs = now.getTime() - completionDate.getTime()
+          const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+          const diffDays = Math.floor(diffHours / 24)
+          
+          let timestamp: string
+          if (diffHours < 1) {
+            const diffMins = Math.floor(diffMs / (1000 * 60))
+            timestamp = diffMins <= 1 ? 'Just now' : `${diffMins} minutes ago`
+          } else if (diffHours < 24) {
+            timestamp = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`
+          } else if (diffDays < 7) {
+            timestamp = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+          } else {
+            timestamp = completionDate.toLocaleDateString()
+          }
+
+          return {
+            id: completion.id.toString(),
+            user: {
+              id: profile.id,
+              name: displayName,
+              username: profile.username ? `@${profile.username}` : '@no-username',
+              avatar: profile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}`,
+            },
+            task: completion.task_title_snapshot || 'Task',
+            proofImage: completion.photo_url || '',
+            timestamp,
+            likes: 0, // TODO: Add likes functionality
+            comments: 0, // TODO: Add comments functionality
+          }
+        })
+        .filter((p): p is SocialPost => p !== null)
+
+      setWebsiteData(prev => ({ ...prev, friendPosts }))
+    } catch (err) {
+      console.error('[WebsiteContext] Error fetching friend posts:', err)
+      setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+    }
+  }, [])
+
   // Fetch all website data once when user is available
   const fetchWebsiteData = useCallback(async () => {
     if (!user) {
@@ -353,6 +750,8 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         fetchProfile(user.id),
         fetchTasks(user.id),
         fetchPosts(user.id),
+        fetchFriendships(user.id),
+        fetchFriendPosts(user.id),
       ])
 
       console.log('[WebsiteContext] Website data load complete')
@@ -362,7 +761,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [user, fetchProfile, fetchTasks, fetchPosts])
+  }, [user?.id, fetchProfile, fetchTasks, fetchPosts, fetchFriendships, fetchFriendPosts])
 
   // Initial data load - only runs once when user becomes available
   // Pattern: Single fetch on mount when user is available, similar to previous project
@@ -410,6 +809,21 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     console.log('[WebsiteContext] Manually refetching posts')
     await fetchPosts(targetUserId)
   }, [user, fetchPosts])
+
+  const refetchFriendships = useCallback(async (): Promise<void> => {
+    if (!user) {
+      return
+    }
+    console.log('[WebsiteContext] Manually refetching friendships')
+    await fetchFriendships(user.id)
+  }, [user, fetchFriendships])
+
+  const refetchFriendPosts = useCallback(async (): Promise<void> => {
+    if (!user) {
+      return
+    }
+    await fetchFriendPosts(user.id)
+  }, [user, fetchFriendPosts])
 
   // Update profile function
   const updateProfile = useCallback(async (data: {
@@ -516,6 +930,44 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refetchTasks])
 
+  // Update task function
+  const updateTask = useCallback(async (
+    taskId: string,
+    title: string,
+    description?: string
+  ): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      console.log('[WebsiteContext] Updating task:', taskId)
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          title: title.trim(),
+          description: description?.trim() || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', taskId)
+        .eq('owner_id', user.id) // Ensure user owns the task
+
+      if (updateError) {
+        console.error('[WebsiteContext] Error updating task:', updateError)
+        return { error: updateError }
+      }
+
+      console.log('[WebsiteContext] Task updated successfully')
+      // Refetch tasks to get updated list
+      await refetchTasks()
+      
+      return { error: null }
+    } catch (err) {
+      console.error('[WebsiteContext] Error updating task:', err)
+      return { error: err instanceof Error ? err : new Error('Failed to update task') }
+    }
+  }, [user, refetchTasks])
+
   // Delete task function
   const deleteTask = useCallback(async (taskId: string): Promise<{ error: Error | null }> => {
     if (!user) {
@@ -549,6 +1001,39 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Helper function to compress image to ~100KB while maintaining quality
+  const compressImage = useCallback(async (file: File): Promise<File> => {
+    try {
+      console.log('[WebsiteContext] Compressing image:', {
+        originalSize: `${(file.size / 1024).toFixed(2)} KB`,
+        originalType: file.type
+      })
+
+      const options = {
+        maxSizeMB: 0.3, // Target 300KB (0.3 MB)
+        maxWidthOrHeight: 1920, // Max dimension to maintain quality
+        useWebWorker: true, // Use web worker for better performance
+        fileType: file.type, // Preserve original file type
+        initialQuality: 0.9, // Start with high quality
+        alwaysKeepResolution: false, // Allow resizing if needed
+      }
+
+      const compressedFile = await imageCompression(file, options)
+      
+      console.log('[WebsiteContext] Image compressed:', {
+        originalSize: `${(file.size / 1024).toFixed(2)} KB`,
+        compressedSize: `${(compressedFile.size / 1024).toFixed(2)} KB`,
+        compressionRatio: `${((1 - compressedFile.size / file.size) * 100).toFixed(1)}%`
+      })
+
+      return compressedFile
+    } catch (error) {
+      console.error('[WebsiteContext] Error compressing image:', error)
+      // If compression fails, return original file
+      return file
+    }
+  }, [])
+
   // Complete task function (with photo upload)
   const completeTask = useCallback(async (
     taskId: string,
@@ -562,15 +1047,18 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     try {
       console.log('[WebsiteContext] Completing task:', taskId)
 
-      // 1. Upload photo to Supabase Storage
+      // 1. Compress image before uploading
+      const compressedPhoto = await compressImage(photo)
+
+      // 2. Upload compressed photo to Supabase Storage
       const timestamp = Date.now()
-      const fileExt = photo.name.split('.').pop()
+      const fileExt = compressedPhoto.name.split('.').pop() || 'jpg'
       const fileName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `${user.id}/${fileName}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('task-photos')
-        .upload(filePath, photo, {
+        .upload(filePath, compressedPhoto, {
           cacheControl: '3600',
           upsert: false
         })
@@ -592,7 +1080,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       const taskTitle = task?.title || ''
 
       // 4. Insert completion record
-      const today = new Date().toISOString().split('T')[0]
+      const today = getLocalDateString()
       const { error: insertError } = await supabase
         .from('task_completions')
         .insert({
@@ -623,7 +1111,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       console.error('[WebsiteContext] Error completing task:', err)
       return { error: err instanceof Error ? err : new Error('Failed to complete task') }
     }
-  }, [user, websiteData.tasks, refetchTasks, refetchPosts])
+  }, [user, websiteData.tasks, refetchTasks, refetchPosts, compressImage])
 
   // Uncomplete task function
   const uncompleteTask = useCallback(async (
@@ -691,20 +1179,193 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [user, refetchTasks, refetchPosts])
 
+  // Friendship action functions - all inline in WebsiteContext
+  const sendFriendRequest = useCallback(async (targetUserId: string): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      // Check if friendship already exists
+      const { data: existing } = await supabase
+        .from('friendships')
+        .select('*')
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},addressee_id.eq.${user.id})`)
+        .maybeSingle()
+
+      if (existing) {
+        return { error: new Error('Friendship already exists') }
+      }
+
+      // Create new friendship request
+      const { error } = await supabase
+        .from('friendships')
+        .insert({
+          requester_id: user.id,
+          addressee_id: targetUserId,
+          status: 'requested',
+        })
+
+      if (error) {
+        return { error: new Error(error.message) }
+      }
+
+      await Promise.all([
+        refetchFriendships(),
+        refetchFriendPosts(),
+      ])
+      return { error: null }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Failed to send friend request') }
+    }
+  }, [user, refetchFriendships, refetchFriendPosts])
+
+  const acceptFriendRequest = useCallback(async (requesterId: string): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      // Find the friendship where requesterId sent the request to current user
+      const { data: friendship, error: fetchError } = await supabase
+        .from('friendships')
+        .select('*')
+        .eq('requester_id', requesterId)
+        .eq('addressee_id', user.id)
+        .eq('status', 'requested')
+        .maybeSingle()
+
+      if (fetchError) {
+        return { error: new Error(fetchError.message) }
+      }
+
+      if (!friendship) {
+        return { error: new Error('Friend request not found') }
+      }
+
+      // Update status to confirmed
+      const { error: updateError } = await supabase
+        .from('friendships')
+        .update({ status: 'confirmed' })
+        .eq('id', friendship.id)
+
+      if (updateError) {
+        return { error: new Error(updateError.message) }
+      }
+
+      await Promise.all([
+        refetchFriendships(),
+        refetchFriendPosts(),
+      ])
+      return { error: null }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Failed to accept friend request') }
+    }
+  }, [user, refetchFriendships, refetchFriendPosts])
+
+  const unfriendOrCancel = useCallback(async (otherUserId: string): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      // Delete the friendship (works for either direction)
+      const { error: deleteError } = await supabase
+        .from('friendships')
+        .delete()
+        .or(`and(requester_id.eq.${user.id},addressee_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},addressee_id.eq.${user.id})`)
+
+      if (deleteError) {
+        return { error: new Error(deleteError.message) }
+      }
+
+      await Promise.all([
+        refetchFriendships(),
+        refetchFriendPosts(),
+      ])
+      return { error: null }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Failed to unfriend') }
+    }
+  }, [user, refetchFriendships, refetchFriendPosts])
+
+  const searchUsers = useCallback(async (searchQuery: string): Promise<{ error: Error | null; data?: Profile[] }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      if (!searchQuery.trim()) {
+        return { error: null, data: [] }
+      }
+
+      const query = `%${searchQuery.toLowerCase()}%`
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', user.id)
+        .or(`username.ilike.${query},first_name.ilike.${query},last_name.ilike.${query},email.ilike.${query}`)
+        .limit(20)
+
+      if (error) {
+        return { error: new Error(error.message) }
+      }
+
+      return { error: null, data: data as Profile[] || [] }
+    } catch (err) {
+      return { error: err instanceof Error ? err : new Error('Failed to search users') }
+    }
+  }, [user])
+
+  const getFriendshipStatus = useCallback((otherUserId: string): 'none' | 'outgoing' | 'incoming' | 'friends' => {
+    // Check if they are friends
+    const isFriend = websiteData.friends.some(
+      f => f.profile.id === otherUserId
+    )
+    if (isFriend) return 'friends'
+
+    // Check if there's an outgoing request
+    const hasOutgoing = websiteData.outgoingRequests.some(
+      f => f.profile.id === otherUserId
+    )
+    if (hasOutgoing) return 'outgoing'
+
+    // Check if there's an incoming request
+    const hasIncoming = websiteData.incomingRequests.some(
+      f => f.profile.id === otherUserId
+    )
+    if (hasIncoming) return 'incoming'
+
+    return 'none'
+  }, [websiteData.friends, websiteData.incomingRequests, websiteData.outgoingRequests])
+
   const value: WebsiteContextType = {
     profile: websiteData.profile,
     tasks: websiteData.tasks,
     posts: websiteData.posts,
+    friends: websiteData.friends,
+    incomingRequests: websiteData.incomingRequests,
+    outgoingRequests: websiteData.outgoingRequests,
+    friendPosts: websiteData.friendPosts,
     loading,
     error,
     refetchProfile,
     refetchTasks,
     refetchPosts,
+    refetchFriendships,
+    refetchFriendPosts,
     updateProfile,
     createTask,
+    updateTask,
     deleteTask,
     completeTask,
     uncompleteTask,
+    sendFriendRequest,
+    acceptFriendRequest,
+    unfriendOrCancel,
+    searchUsers,
+    getFriendshipStatus,
   }
 
   return <WebsiteContext.Provider value={value}>{children}</WebsiteContext.Provider>

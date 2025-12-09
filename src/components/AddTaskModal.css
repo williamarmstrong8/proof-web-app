@@ -162,14 +162,6 @@
   user-select: none;
 }
 
-.add-task-modal-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: auto;
-  padding-top: 24px;
-  border-top: 2px solid hsl(var(--border));
-  flex-shrink: 0;
-}
 
 .add-task-button {
   flex: 1;
@@ -212,6 +204,42 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.add-task-button-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.add-task-button-danger {
+  background: transparent;
+  color: hsl(var(--destructive));
+  border-color: hsl(var(--destructive));
+  flex: 1;
+  min-width: auto;
+  padding: 14px 24px;
+}
+
+.add-task-button-danger:hover {
+  background: hsl(var(--destructive));
+  color: hsl(var(--background));
+}
+
+.add-task-button-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.add-task-modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
+  padding: 24px;
+  border-top: 2px solid hsl(var(--border));
+  flex-shrink: 0;
+  justify-content: space-between;
+  align-items: center;
+}
+
 @media (max-width: 768px) {
   .add-task-modal-overlay {
     padding: 16px;
@@ -232,6 +260,7 @@
 
   .add-task-modal-actions {
     flex-direction: column;
+    padding: 20px;
   }
 
   .add-task-button {

@@ -29,7 +29,7 @@ export function BottomNav() {
   ]
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center pointer-events-none">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-center pointer-events-none" style={{ position: 'fixed', bottom: 0 }}>
       <div className="pointer-events-auto w-full max-w-2xl px-4 pb-4">
         <CustomDock items={items} className="h-auto" />
       </div>

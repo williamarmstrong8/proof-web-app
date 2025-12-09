@@ -63,8 +63,8 @@ export function HomePage() {
       }
 
       // Success - close modal
-      setCompletionModalOpen(false)
-      setSelectedTask(null)
+    setCompletionModalOpen(false)
+    setSelectedTask(null)
     } catch (err) {
       console.error('Error completing task:', err)
       alert('Failed to complete task')
@@ -106,8 +106,8 @@ export function HomePage() {
           isSubmitting={isSubmitting}
           onClose={() => {
             if (!isSubmitting) {
-              setCompletionModalOpen(false)
-              setSelectedTask(null)
+            setCompletionModalOpen(false)
+            setSelectedTask(null)
             }
           }}
           onComplete={handleTaskCompletion}

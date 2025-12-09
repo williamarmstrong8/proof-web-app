@@ -65,7 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      console.log('[AuthProvider] Auth state changed:', event)
+      // Only log meaningful state changes, not background token refreshes
+      // TOKEN_REFRESHED happens automatically every hour and isn't a real state change
+      if (event !== 'TOKEN_REFRESHED') {
+        console.log('[AuthProvider] Auth state changed:', event)
+      }
       
       try {
         // Only set loading for actual state changes (login/logout), not token refreshes
@@ -74,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(true)
         }
         
+        // Always update session/user state (even for token refresh) to keep it current
         setSession(session)
         setUser(session?.user ?? null)
         // Don't fetch profile here - WebsiteContext will handle it

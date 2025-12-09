@@ -1,79 +1,175 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, UserPlus, Search } from 'lucide-react'
+import { ArrowLeft, UserPlus, Search, X, Check, Clock } from 'lucide-react'
+import { useWebsite } from '../lib/WebsiteContext'
+import type { Profile } from '../lib/WebsiteContext'
 import './AddFriendsPage.css'
 
-interface SuggestedUser {
-  id: string
-  name: string
-  username: string
-  avatar: string
-  mutualFriends: number
-  isFriend: boolean
+type FriendshipStatus = 'none' | 'outgoing' | 'incoming' | 'friends'
+
+interface UserWithStatus extends Profile {
+  friendshipStatus: FriendshipStatus
 }
 
 export function AddFriendsPage() {
   const navigate = useNavigate()
+  const { 
+    searchUsers, 
+    getFriendshipStatus,
+    sendFriendRequest,
+    acceptFriendRequest,
+    unfriendOrCancel,
+    friends,
+    incomingRequests,
+    outgoingRequests,
+  } = useWebsite()
+
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Profile[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null)
 
-  // Mock suggested users
-  const suggestedUsers: SuggestedUser[] = [
-    {
-      id: '1',
-      name: 'Jordan Smith',
-      username: '@jordans',
-      avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 3,
-      isFriend: false,
-    },
-    {
-      id: '2',
-      name: 'Taylor Brown',
-      username: '@taylorb',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 5,
-      isFriend: false,
-    },
-    {
-      id: '3',
-      name: 'Morgan Lee',
-      username: '@morganl',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 2,
-      isFriend: false,
-    },
-    {
-      id: '4',
-      name: 'Casey Davis',
-      username: '@caseyd',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 4,
-      isFriend: false,
-    },
-    {
-      id: '5',
-      name: 'Riley Wilson',
-      username: '@rileyw',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
-      mutualFriends: 1,
-      isFriend: false,
-    },
-  ]
+  // Debug logging
+  useEffect(() => {
+    console.log('[AddFriendsPage] Friendship data:', {
+      friends: friends.length,
+      incomingRequests: incomingRequests.length,
+      outgoingRequests: outgoingRequests.length,
+      incomingRequestsData: incomingRequests,
+    })
+  }, [friends, incomingRequests, outgoingRequests])
 
-  const [users, setUsers] = useState(suggestedUsers)
+  // Search for users as the query changes (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([])
+        return
+      }
 
-  const handleAddFriend = (userId: string) => {
-    // TODO: Implement add friend functionality
-    console.log('Add friend:', userId)
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, isFriend: true } : user
-    ))
+      setIsSearching(true)
+      const result = await searchUsers(searchQuery)
+      
+      if (!result.error && result.data) {
+        setSearchResults(result.data)
+      }
+      setIsSearching(false)
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [searchQuery, searchUsers])
+
+  // Combine search results with their friendship status
+  const usersWithStatus: UserWithStatus[] = useMemo(() => {
+    return searchResults.map(user => ({
+      ...user,
+      friendshipStatus: getFriendshipStatus(user.id)
+    }))
+  }, [searchResults, getFriendshipStatus])
+
+  // Handle sending a friend request
+  const handleSendRequest = async (userId: string) => {
+    setActionInProgress(userId)
+    const result = await sendFriendRequest(userId)
+    
+    if (result.error) {
+      alert(`Error: ${result.error.message}`)
+    }
+    
+    setActionInProgress(null)
   }
 
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.username.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Handle accepting a friend request
+  const handleAcceptRequest = async (userId: string) => {
+    setActionInProgress(userId)
+    const result = await acceptFriendRequest(userId)
+    
+    if (result.error) {
+      alert(`Error: ${result.error.message}`)
+    }
+    
+    setActionInProgress(null)
+  }
+
+  // Handle unfriending or canceling a request
+  const handleUnfriendOrCancel = async (userId: string) => {
+    if (!confirm('Are you sure you want to unfriend or cancel this request?')) {
+      return
+    }
+
+    setActionInProgress(userId)
+    const result = await unfriendOrCancel(userId)
+    
+    if (result.error) {
+      alert(`Error: ${result.error.message}`)
+    }
+    
+    setActionInProgress(null)
+  }
+
+  // Render the appropriate button based on friendship status
+  const renderActionButton = (user: UserWithStatus) => {
+    const isLoading = actionInProgress === user.id
+
+    switch (user.friendshipStatus) {
+      case 'friends':
+        return (
+          <button
+            className="add-friends-add-button add-friends-add-button-friends"
+            onClick={() => handleUnfriendOrCancel(user.id)}
+            disabled={isLoading}
+          >
+            <Check size={16} />
+            <span>Friends</span>
+          </button>
+        )
+
+      case 'outgoing':
+        return (
+          <button
+            className="add-friends-add-button add-friends-add-button-requested"
+            onClick={() => handleUnfriendOrCancel(user.id)}
+            disabled={isLoading}
+          >
+            <Clock size={16} />
+            <span>Requested</span>
+          </button>
+        )
+
+      case 'incoming':
+        return (
+          <button
+            className="add-friends-add-button add-friends-add-button-accept"
+            onClick={() => handleAcceptRequest(user.id)}
+            disabled={isLoading}
+          >
+            <UserPlus size={16} />
+            <span>Accept</span>
+          </button>
+        )
+
+      case 'none':
+      default:
+        return (
+          <button
+            className="add-friends-add-button"
+            onClick={() => handleSendRequest(user.id)}
+            disabled={isLoading}
+          >
+            <UserPlus size={16} />
+            <span>Add</span>
+          </button>
+        )
+    }
+  }
+
+  // Get display name for user
+  const getDisplayName = (user: Profile) => {
+    if (user.first_name && user.last_name) {
+      return `${user.first_name} ${user.last_name}`
+    }
+    return user.username || user.email || 'Unknown User'
+  }
 
   return (
     <div className="add-friends-page">
@@ -92,52 +188,189 @@ export function AddFriendsPage() {
             <input
               type="text"
               className="add-friends-search-input"
-              placeholder="Search by name or username..."
+              placeholder="Search by name, username, or email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+            {searchQuery && (
+              <button 
+                className="add-friends-search-clear"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchResults([])
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
 
+        {/* Incoming Friend Requests Section - Always show at top if there are any */}
+        {incomingRequests.length > 0 && (
         <div className="add-friends-section">
-          <h2 className="add-friends-section-title">Suggested</h2>
+            <h2 className="add-friends-section-title">
+              Friend Requests ({incomingRequests.length})
+            </h2>
           <div className="add-friends-list">
-            {filteredUsers.map((user) => (
+              {incomingRequests.map((request) => {
+                const user = request.profile
+                return (
               <div key={user.id} className="add-friends-user-card">
                 <img 
-                  src={user.avatar} 
-                  alt={user.name}
+                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}`} 
+                      alt={getDisplayName(user)}
                   className="add-friends-user-avatar"
                 />
                 <div className="add-friends-user-info">
                   <div className="add-friends-user-name-row">
-                    <span className="add-friends-user-name">{user.name}</span>
+                        <span className="add-friends-user-name">{getDisplayName(user)}</span>
                   </div>
-                  <span className="add-friends-user-username">{user.username}</span>
-                  <span className="add-friends-mutual-friends">
-                    {user.mutualFriends} mutual friend{user.mutualFriends !== 1 ? 's' : ''}
-                  </span>
+                      <span className="add-friends-user-username">@{user.username || 'no-username'}</span>
+                      {user.caption && (
+                        <span className="add-friends-user-caption">{user.caption}</span>
+                      )}
                 </div>
                 <button
-                  className={`add-friends-add-button ${user.isFriend ? 'add-friends-add-button-added' : ''}`}
-                  onClick={() => handleAddFriend(user.id)}
-                  disabled={user.isFriend}
+                      className="add-friends-add-button add-friends-add-button-accept"
+                      onClick={() => handleAcceptRequest(user.id)}
+                      disabled={actionInProgress === user.id}
                 >
-                  {user.isFriend ? (
-                    <>
-                      <span>Added</span>
-                    </>
-                  ) : (
-                    <>
                       <UserPlus size={16} />
-                      <span>Add</span>
-                    </>
-                  )}
+                      <span>Accept</span>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Outgoing Friend Requests Section - Show requests you've sent */}
+        {outgoingRequests.length > 0 && (
+          <div className="add-friends-section">
+            <h2 className="add-friends-section-title">
+              Sent Requests ({outgoingRequests.length})
+            </h2>
+            <div className="add-friends-list">
+              {outgoingRequests.map((request) => {
+                const user = request.profile
+                return (
+                  <div key={user.id} className="add-friends-user-card">
+                    <img 
+                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}`} 
+                      alt={getDisplayName(user)}
+                      className="add-friends-user-avatar"
+                    />
+                    <div className="add-friends-user-info">
+                      <div className="add-friends-user-name-row">
+                        <span className="add-friends-user-name">{getDisplayName(user)}</span>
+                      </div>
+                      <span className="add-friends-user-username">@{user.username || 'no-username'}</span>
+                      {user.caption && (
+                        <span className="add-friends-user-caption">{user.caption}</span>
+                      )}
+                    </div>
+                    <button
+                      className="add-friends-add-button add-friends-add-button-requested"
+                      onClick={() => handleUnfriendOrCancel(user.id)}
+                      disabled={actionInProgress === user.id}
+                    >
+                      <Clock size={16} />
+                      <span>Requested</span>
                 </button>
               </div>
-            ))}
+                )
+              })}
+            </div>
           </div>
+        )}
+
+        {/* Search Results Section */}
+        {searchQuery.trim().length >= 2 && (
+          <div className="add-friends-section">
+            <h2 className="add-friends-section-title">
+              {isSearching ? 'Searching...' : `Search Results (${usersWithStatus.length})`}
+            </h2>
+            
+            {!isSearching && usersWithStatus.length === 0 && (
+              <div className="add-friends-empty">
+                <p>No users found matching "{searchQuery}"</p>
+              </div>
+            )}
+
+            {usersWithStatus.length > 0 && (
+              <div className="add-friends-list">
+                {usersWithStatus.map((user) => (
+                  <div key={user.id} className="add-friends-user-card">
+                    <img 
+                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}`} 
+                      alt={getDisplayName(user)}
+                      className="add-friends-user-avatar"
+                    />
+                    <div className="add-friends-user-info">
+                      <div className="add-friends-user-name-row">
+                        <span className="add-friends-user-name">{getDisplayName(user)}</span>
+                      </div>
+                      <span className="add-friends-user-username">@{user.username || 'no-username'}</span>
+                      {user.caption && (
+                        <span className="add-friends-user-caption">{user.caption}</span>
+                      )}
+                    </div>
+                    {renderActionButton(user)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Current Friends Section */}
+        {!searchQuery && friends.length > 0 && (
+          <div className="add-friends-section">
+            <h2 className="add-friends-section-title">
+              Your Friends ({friends.length})
+            </h2>
+            <div className="add-friends-list">
+              {friends.map((friendship) => {
+                const user = friendship.profile
+                return (
+                  <div key={user.id} className="add-friends-user-card">
+                    <img 
+                      src={user.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(getDisplayName(user))}`} 
+                      alt={getDisplayName(user)}
+                      className="add-friends-user-avatar"
+                    />
+                    <div className="add-friends-user-info">
+                      <div className="add-friends-user-name-row">
+                        <span className="add-friends-user-name">{getDisplayName(user)}</span>
+                      </div>
+                      <span className="add-friends-user-username">@{user.username || 'no-username'}</span>
+                      {user.caption && (
+                        <span className="add-friends-user-caption">{user.caption}</span>
+                      )}
+                    </div>
+                    <button
+                      className="add-friends-add-button add-friends-add-button-friends"
+                      onClick={() => handleUnfriendOrCancel(user.id)}
+                      disabled={actionInProgress === user.id}
+                    >
+                      <Check size={16} />
+                      <span>Friends</span>
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state when no friends and no search */}
+        {!searchQuery && friends.length === 0 && incomingRequests.length === 0 && (
+          <div className="add-friends-empty">
+            <p>Search for users above to start adding friends!</p>
         </div>
+        )}
       </div>
     </div>
   )
