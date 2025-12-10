@@ -1076,7 +1076,6 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       // Process partner tasks with completion status, streaks, partner completion status, and other user profile
       const partnerTasksWithStatus = partnerTasksData.map((task: any) => {
         const taskId = parseInt(task.id)
-        const userCompletions = userCompletionsByTask.get(taskId) || []
         const todayCompletions = todayCompletionsByTask.get(taskId) || []
         
         // Determine the other user (partner) for this task

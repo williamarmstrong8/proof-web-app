@@ -15,7 +15,6 @@ export function HomePage() {
   const { 
     profile, 
     tasks, 
-    partnerTasks,
     loading: profileLoading, 
     completeTask, 
     uncompleteTask,

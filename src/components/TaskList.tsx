@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { IndividualTask } from './IndividualTask'
 import { PartnerTask } from './PartnerTask'
@@ -25,7 +25,7 @@ interface TaskListProps {
   partnerTaskRefreshKey?: number
 }
 
-export function TaskList({ individualTasks, groupTasks = [], onTaskComplete, onTaskUncomplete, onPartnerTaskDelete, partnerTaskRefreshKey }: TaskListProps) {
+export function TaskList({ individualTasks, groupTasks: _groupTasks = [], onTaskComplete, onTaskUncomplete, onPartnerTaskDelete, partnerTaskRefreshKey }: TaskListProps) {
   const { 
     createTask, 
     updateTask, 

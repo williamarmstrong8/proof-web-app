@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, Plus, Users, Search } from 'lucide-react'
 import { useWebsite } from '../lib/WebsiteContext'
 import './AddTaskModal.css'

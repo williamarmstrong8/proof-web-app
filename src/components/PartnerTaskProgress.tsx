@@ -27,11 +27,11 @@ interface PartnerTaskProgressProps {
 
 export function PartnerTaskProgress({
   partnerTask,
-  currentUserId,
-  date,
+  currentUserId: _currentUserId,
+  date: _date,
   onStatusUpdate,
-  refreshKey,
-  partnerName = 'Partner',
+  refreshKey: _refreshKey,
+  partnerName: _partnerName = 'Partner',
   currentUserProfile,
   otherUserProfile,
   showProgressBarOnly = false,

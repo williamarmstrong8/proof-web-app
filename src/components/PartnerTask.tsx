@@ -1,12 +1,24 @@
 import { MoreVertical, Clock } from 'lucide-react'
 import { PartnerTaskProgress } from './PartnerTaskProgress'
 import type { PartnerTask as PartnerTaskType } from '../lib/partnerTasks'
+type ExtendedPartnerTask = PartnerTaskType & {
+  completed_today?: boolean
+  partner_completed_today?: boolean
+  other_user_name?: string
+  other_user_profile?: {
+    id: string
+    first_name: string
+    last_name: string
+    username: string
+    avatar_url: string | null
+  } | null
+}
 import { useWebsite } from '../lib/WebsiteContext'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import './Task.css'
 
 interface PartnerTaskProps {
-  partnerTask: PartnerTaskType
+  partnerTask: ExtendedPartnerTask
   onComplete?: () => void
   onUncomplete?: () => void
   onEdit?: () => void
@@ -88,7 +100,7 @@ export function PartnerTask({
               currentUserProfile={profile}
               otherUserProfile={(partnerTask as any).other_user_profile}
               showAvatarsOnly={true}
-              onStatusUpdate={(completed) => {
+              onStatusUpdate={() => {
                 setLoadingStatus(false)
               }}
             />
@@ -126,7 +138,7 @@ export function PartnerTask({
             currentUserProfile={profile}
             otherUserProfile={(partnerTask as any).other_user_profile}
             showProgressBarOnly={true}
-            onStatusUpdate={(completed) => {
+            onStatusUpdate={() => {
               setLoadingStatus(false)
             }}
           />

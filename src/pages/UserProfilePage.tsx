@@ -60,43 +60,18 @@ export function UserProfilePage() {
           .eq('owner_id', profileData.id)
           .order('created_at', { ascending: false })
 
-        if (tasksError) {
-          console.error('[UserProfilePage] Error fetching tasks:', tasksError)
-          console.error('[UserProfilePage] This might be due to RLS policies. Make sure users can view other users\' tasks.')
-          setTasks([])
-        } else {
-          // Get completions for tasks to calculate streaks
-          const taskIds = (tasksData || []).map(t => t.id)
-          if (taskIds.length > 0) {
-            const { data: completionsData } = await supabase
-              .from('task_completions')
-              .select('task_id, completed_on')
-              .eq('user_id', profileData.id)
-              .in('task_id', taskIds)
+        // Helper to get local date string (YYYY-MM-DD)
+        const getLocalDateString = (): string => {
+          const now = new Date()
+          const year = now.getFullYear()
+          const month = String(now.getMonth() + 1).padStart(2, '0')
+          const day = String(now.getDate()).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
 
-            // Calculate streaks and totals for each task
-            const completionsByTask = new Map<number, string[]>()
-            if (completionsData) {
-              completionsData.forEach((c: any) => {
-                if (!completionsByTask.has(c.task_id)) {
-                  completionsByTask.set(c.task_id, [])
-                }
-                completionsByTask.get(c.task_id)!.push(c.completed_on)
-              })
-            }
-
-            // Helper to get local date string (YYYY-MM-DD)
-            const getLocalDateString = (): string => {
-              const now = new Date()
-              const year = now.getFullYear()
-              const month = String(now.getMonth() + 1).padStart(2, '0')
-              const day = String(now.getDate()).padStart(2, '0')
-              return `${year}-${month}-${day}`
-            }
-
-            // Calculate current streak (simplified - same logic as WebsiteContext)
-            const today = getLocalDateString()
-            const calculateStreak = (dates: string[]): number => {
+        // Calculate current streak (simplified - same logic as WebsiteContext)
+        const today = getLocalDateString()
+        const calculateStreak = (dates: string[]): number => {
               if (dates.length === 0) return 0
               const sortedDates = [...new Set(dates)]
                 .map(d => {
@@ -145,6 +120,31 @@ export function UserProfilePage() {
                 }
               }
               return streak
+            }
+
+        if (tasksError) {
+          console.error('[UserProfilePage] Error fetching tasks:', tasksError)
+          console.error('[UserProfilePage] This might be due to RLS policies. Make sure users can view other users\' tasks.')
+          setTasks([])
+        } else {
+          // Get completions for tasks to calculate streaks
+          const taskIds = (tasksData || []).map(t => t.id)
+          if (taskIds.length > 0) {
+            const { data: completionsData } = await supabase
+              .from('task_completions')
+              .select('task_id, completed_on')
+              .eq('user_id', profileData.id)
+              .in('task_id', taskIds)
+
+            // Calculate streaks and totals for each task
+            const completionsByTask = new Map<number, string[]>()
+            if (completionsData) {
+              completionsData.forEach((c: any) => {
+                if (!completionsByTask.has(c.task_id)) {
+                  completionsByTask.set(c.task_id, [])
+                }
+                completionsByTask.get(c.task_id)!.push(c.completed_on)
+              })
             }
 
             const tasksWithStreaks: Task[] = (tasksData || []).map((task: any) => {
