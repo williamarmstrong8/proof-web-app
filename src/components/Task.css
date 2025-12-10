@@ -22,7 +22,13 @@
   background: #f9f9f9;
 }
 
-.task-completed .task-title {
+/* Don't cross out partner task titles when completed */
+.task-partner.task-completed .task-title {
+  text-decoration: none;
+}
+
+/* Only cross out individual task titles when completed */
+.task-individual.task-completed .task-title {
   text-decoration: line-through;
 }
 
@@ -40,11 +46,18 @@
   transition: all 0.3s ease;
   padding: 0;
   flex-shrink: 0;
+  margin-top: 1px; /* Aligns checkbox with text baseline */
 }
 
 .task-completed .task-checkbox {
   background: #000;
   border-color: #000;
+}
+
+/* Partner tasks: checkbox gets black background when current user completes (even if partner hasn't) */
+.task-checkbox-completed {
+  background: #000 !important;
+  border-color: #000 !important;
 }
 
 .task-checkbox:hover {
@@ -63,6 +76,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  padding-top: 0;
 }
 
 .task-title {
@@ -71,6 +85,7 @@
   font-weight: 500;
   color: #000;
   margin: 0;
+  padding: 0;
   line-height: 1.4;
 }
 
@@ -90,6 +105,7 @@
   font-weight: 400;
   color: rgba(0, 0, 0, 0.6);
   margin: 0;
+  padding: 0;
   line-height: 1.4;
 }
 
@@ -137,5 +153,115 @@
 
 .task-menu-overlay {
   pointer-events: auto;
+}
+
+/* Partner Task Specific Styles */
+.task-partner {
+  border-color: rgba(100, 150, 255, 0.3);
+}
+
+.task-partner:hover {
+  border-color: rgba(100, 150, 255, 0.5);
+}
+
+.task-header-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 0 0 -2px 0;
+  padding: 0;
+  line-height: 1;
+}
+
+.task-header-row .partner-avatars {
+  margin-left: auto;
+}
+
+.task-badge {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+  height: fit-content;
+}
+
+.task-badge-partner {
+  background: rgba(100, 150, 255, 0.1);
+  color: rgba(100, 150, 255, 1);
+  border: 1px solid rgba(100, 150, 255, 0.3);
+}
+
+.task-partner-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+}
+
+.task-partner-icon {
+  color: rgba(0, 0, 0, 0.4);
+  flex-shrink: 0;
+}
+
+.task-partner-status {
+  color: rgba(0, 0, 0, 0.6);
+  line-height: 1.4;
+}
+
+.partner-status-complete {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.partner-status-pending {
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+}
+
+/* Pending Partner Task Styles */
+.task-pending {
+  opacity: 0.85;
+  border-color: rgba(255, 165, 0, 0.3);
+}
+
+.task-pending:hover {
+  border-color: rgba(255, 165, 0, 0.5);
+}
+
+.task-pending .task-checkbox {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.task-pending-icon {
+  font-size: 16px;
+  opacity: 0.6;
+}
+
+.task-badge-pending {
+  background: rgba(255, 165, 0, 0.1);
+  color: rgba(255, 165, 0, 1);
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.partner-task-pending-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 165, 0, 0.9);
+  font-weight: 500;
 }
 

@@ -6,16 +6,30 @@ import { useWebsite } from '../lib/WebsiteContext'
 import './ProfilePage.css'
 
 export function ProfilePage() {
-  const { profile, tasks, posts, loading } = useWebsite()
+  const { profile, tasks, partnerTasks, posts, loading } = useWebsite()
 
   // Convert tasks to habit history format (using real data from database)
-  const habits = tasks.map(task => ({
+  const taskHabits = tasks.map(task => ({
     id: task.id,
     name: task.title,
     streak: task.current_streak || 0,
     total: task.total_completions || 0,
     color: '#000',
   }))
+
+  // Convert partner tasks to habit history format
+  const partnerHabits = partnerTasks
+    .filter(pt => pt.status === 'accepted') // Only show accepted partner tasks
+    .map(partnerTask => ({
+      id: `partner-${partnerTask.id}`,
+      name: partnerTask.title,
+      streak: partnerTask.current_streak || 0,
+      total: partnerTask.total_completions || 0,
+      color: '#000',
+    }))
+
+  // Combine both types of habits
+  const habits = [...taskHabits, ...partnerHabits]
 
   // Show loading state only if still actively loading
   if (loading) {
@@ -53,9 +67,13 @@ export function ProfilePage() {
     avatarUrl: profile.avatar_url,
     bio: profile.caption || 'Tracking habits and sharing moments. Proof over perfection.',
     stats: {
-      posts: posts.length, // Real posts count from database
-      habits: tasks.length, // Real habits count from database
-      streak: Math.max(...tasks.map(t => t.current_streak || 0), 0), // Longest current streak
+      posts: posts.length, // Real posts count from database (includes partner task completions)
+      habits: tasks.length + partnerTasks.filter(pt => pt.status === 'accepted').length, // Real habits count (tasks + partner tasks)
+      streak: Math.max(
+        ...tasks.map(t => t.current_streak || 0),
+        ...partnerTasks.filter(pt => pt.status === 'accepted').map(pt => pt.current_streak || 0),
+        0
+      ), // Longest current streak across all tasks
     },
   }
 
@@ -65,8 +83,112 @@ export function ProfilePage() {
         <ProfileHeader userData={userData} />
         
         <div className="profile-sections">
-          <HabitHistory habits={habits} />
-          <PostGrid posts={posts} />
+          {habits.length > 0 ? (
+            <HabitHistory habits={habits} />
+          ) : (
+            <div className="habit-history-section">
+              <h2 className="habit-history-title">Habit History</h2>
+              <div className="habit-item habit-item-bronze" style={{ 
+                padding: '24px',
+                background: 'hsl(var(--card))',
+                border: '2px solid hsl(var(--border))',
+                borderRadius: '0'
+              }}>
+                <div style={{ marginBottom: '16px' }}>
+                  <h3 style={{ 
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: 'hsl(var(--foreground))',
+                    margin: '0 0 12px 0'
+                  }}>
+                    What is Habit History?
+                  </h3>
+                  <p style={{
+                    fontFamily: 'Montserrat, sans-serif',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    color: 'hsl(var(--muted-foreground))',
+                    margin: 0
+                  }}>
+                    Habit History tracks your daily task completions and shows your progress over time. 
+                    Each habit displays your current streak (consecutive days completed) and total completions. 
+                    As you build longer streaks, you'll unlock different tiers: Bronze (0-4 days), Silver (5-24 days), 
+                    and Gold (25+ days). Start completing tasks to see your habits appear here!
+                  </p>
+                </div>
+                <div className="habit-progress-container">
+                  <div 
+                    className="habit-progress-bar habit-progress-bar-bronze"
+                    style={{ width: '0%' }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {posts.length > 0 ? (
+            <PostGrid 
+              posts={posts}
+              user={{
+                id: profile.id,
+                name: userData.name,
+                username: userData.username,
+                avatar: userData.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}`,
+              }}
+            />
+          ) : (
+            <div className="post-grid-section">
+              <h2 className="post-grid-title">Posts</h2>
+              <div className="post-grid">
+                <div 
+                  className="post-item"
+                  style={{ cursor: 'default' }}
+                >
+                  <div className="post-image-container">
+                    <div style={{
+                      width: '100%',
+                      height: '100%',
+                      background: 'linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--border)) 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative'
+                    }}>
+                      <div style={{
+                        textAlign: 'center',
+                        padding: '20px',
+                        color: 'hsl(var(--muted-foreground))',
+                        zIndex: 1
+                      }}>
+                        <div style={{
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          marginBottom: '8px',
+                          color: 'hsl(var(--foreground))'
+                        }}>
+                          📸
+                        </div>
+                        <div style={{
+                          fontFamily: 'Montserrat, sans-serif',
+                          fontSize: '12px',
+                          opacity: 0.8
+                        }}>
+                          Your proof photos will appear here
+                        </div>
+                      </div>
+                      <div className="post-overlay" style={{ background: 'rgba(0, 0, 0, 0)' }}>
+                        <span className="post-date" style={{ color: 'rgba(255, 255, 255, 0)' }}>
+                          Example
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       

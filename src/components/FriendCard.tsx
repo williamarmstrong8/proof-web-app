@@ -17,15 +17,21 @@ interface FriendCardProps {
 
 export function FriendCard({ friend }: FriendCardProps) {
   const navigate = useNavigate()
+  const isMock = friend.id.startsWith('mock-')
 
   const handleClick = () => {
+    if (isMock) return // Don't navigate for mock friends
     // Extract username from @username format
     const username = friend.username.replace('@', '')
     navigate(`/user/${username}`)
   }
 
   return (
-    <div className="friend-card" onClick={handleClick}>
+    <div 
+      className="friend-card" 
+      onClick={handleClick}
+      style={{ cursor: isMock ? 'default' : 'pointer', opacity: isMock ? 0.7 : 1 }}
+    >
       <div className="friend-avatar-container">
         <img 
           src={friend.avatar} 

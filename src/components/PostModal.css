@@ -1,17 +1,76 @@
-.post-card {
+.post-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.post-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.post-modal-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 10001;
+}
+
+.post-modal-card {
   background: hsl(var(--card));
   border: 2px solid hsl(var(--border));
   border-radius: 0;
   overflow: hidden;
-  transition: all 0.3s ease;
+  width: 100%;
 }
 
-.post-card:hover {
-  border-color: hsl(var(--foreground));
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.post-card-header {
+/* Reuse PostCard styles but ensure they work in modal context */
+.post-modal-card .post-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -19,18 +78,13 @@
   border-bottom: 2px solid hsl(var(--border));
 }
 
-.post-user-info {
+.post-modal-card .post-user-info {
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: opacity 0.3s ease;
 }
 
-.post-user-info:hover {
-  opacity: 0.7;
-}
-
-.post-user-avatar {
+.post-modal-card .post-user-avatar {
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -38,38 +92,38 @@
   border: 2px solid hsl(var(--border));
 }
 
-.post-user-details {
+.post-modal-card .post-user-details {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.post-user-name-row {
+.post-modal-card .post-user-name-row {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.post-user-name {
+.post-modal-card .post-user-name {
   font-family: 'Montserrat', sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: hsl(var(--foreground));
 }
 
-.post-verified-icon {
+.post-modal-card .post-verified-icon {
   color: hsl(var(--foreground));
   flex-shrink: 0;
 }
 
-.post-user-username {
+.post-modal-card .post-user-username {
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   font-weight: 400;
   color: hsl(var(--muted-foreground));
 }
 
-.post-timestamp {
+.post-modal-card .post-timestamp {
   font-family: 'Montserrat', sans-serif;
   font-size: 12px;
   font-weight: 400;
@@ -78,7 +132,7 @@
   letter-spacing: 0.5px;
 }
 
-.post-task-badge {
+.post-modal-card .post-task-badge {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -87,7 +141,7 @@
   border-bottom: 2px solid hsl(var(--border));
 }
 
-.post-task-label {
+.post-modal-card .post-task-label {
   font-family: 'Montserrat', sans-serif;
   font-size: 12px;
   font-weight: 500;
@@ -96,7 +150,7 @@
   letter-spacing: 0.5px;
 }
 
-.post-task-name {
+.post-modal-card .post-task-name {
   font-family: 'Archivo Black', sans-serif;
   font-size: 14px;
   font-weight: 900;
@@ -105,7 +159,7 @@
   letter-spacing: 0.5px;
 }
 
-.post-partner-info {
+.post-modal-card .post-partner-info {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -114,7 +168,7 @@
   border-bottom: 2px solid hsl(var(--border));
 }
 
-.post-partner-label {
+.post-modal-card .post-partner-label {
   font-family: 'Montserrat', sans-serif;
   font-size: 12px;
   font-weight: 500;
@@ -123,56 +177,20 @@
   letter-spacing: 0.5px;
 }
 
-.post-partner-user {
+.post-modal-card .post-partner-user {
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: opacity 0.3s ease;
 }
 
-.post-partner-user:hover {
-  opacity: 0.7;
-}
-
-.post-partner-username {
+.post-modal-card .post-partner-username {
   font-family: 'Montserrat', sans-serif;
   font-size: 13px;
   font-weight: 500;
   color: hsl(var(--foreground));
 }
 
-.post-add-friend-button {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  padding: 4px 10px;
-  background: hsl(var(--foreground));
-  color: hsl(var(--background));
-  border: none;
-  border-radius: 4px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.post-add-friend-button:hover:not(:disabled) {
-  opacity: 0.8;
-  transform: scale(1.05);
-}
-
-.post-add-friend-button:active:not(:disabled) {
-  transform: scale(0.95);
-}
-
-.post-add-friend-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.post-image-container {
+.post-modal-card .post-image-container {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
@@ -180,18 +198,19 @@
   background: hsl(var(--muted));
 }
 
-.post-image {
+.post-modal-card .post-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: none;
 }
 
-.post-card:hover .post-image {
-  transform: scale(1.02);
+/* Remove hover effect from image in modal */
+.post-modal-card:hover .post-image {
+  transform: none;
 }
 
-.post-proof-overlay {
+.post-modal-card .post-proof-overlay {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -205,12 +224,12 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.post-proof-icon {
+.post-modal-card .post-proof-icon {
   color: #fff;
   flex-shrink: 0;
 }
 
-.post-proof-text {
+.post-modal-card .post-proof-text {
   font-family: 'Montserrat', sans-serif;
   font-size: 12px;
   font-weight: 600;
@@ -220,7 +239,7 @@
   white-space: nowrap;
 }
 
-.post-actions {
+.post-modal-card .post-actions {
   display: flex;
   align-items: center;
   gap: 24px;
@@ -228,7 +247,7 @@
   border-top: 2px solid hsl(var(--border));
 }
 
-.post-action-button {
+.post-modal-card .post-action-button {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -236,31 +255,17 @@
   border: none;
   cursor: pointer;
   padding: 0;
-  transition: all 0.3s ease;
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   font-weight: 500;
   color: hsl(var(--foreground));
 }
 
-.post-action-button:hover {
-  opacity: 0.7;
-}
-
-.post-action-button:active {
-  transform: scale(0.95);
-}
-
-.post-action-icon {
+.post-modal-card .post-action-icon {
   color: hsl(var(--foreground));
-  transition: all 0.3s ease;
 }
 
-.post-action-button:hover .post-action-icon {
-  transform: scale(1.1);
-}
-
-.post-action-count {
+.post-modal-card .post-action-count {
   font-family: 'Montserrat', sans-serif;
   font-size: 14px;
   font-weight: 500;
@@ -268,40 +273,19 @@
 }
 
 @media (max-width: 768px) {
-  .post-card-header {
-    padding: 14px 16px;
+  .post-modal-overlay {
+    padding: 0;
   }
 
-  .post-user-avatar {
-    width: 40px;
-    height: 40px;
+  .post-modal-container {
+    max-height: 100vh;
+    max-width: 100%;
   }
 
-  .post-user-name {
-    font-size: 14px;
-  }
-
-  .post-user-username {
-    font-size: 12px;
-  }
-
-  .post-task-badge {
-    padding: 10px 16px;
-  }
-
-  .post-actions {
-    padding: 14px 16px;
-    gap: 20px;
-  }
-
-  .post-proof-overlay {
-    top: 8px;
-    right: 8px;
-    padding: 6px 10px;
-  }
-
-  .post-proof-text {
-    font-size: 11px;
+  .post-modal-close {
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 255, 255, 0.3);
   }
 }
-

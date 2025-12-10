@@ -4,13 +4,26 @@ import { BottomNav } from '../components/BottomNav'
 import { TaskList } from '../components/TaskList'
 import { UserHeader } from '../components/UserHeader'
 import { TaskCompletionModal } from '../components/TaskCompletionModal'
+import { PartnerTaskInvites } from '../components/PartnerTaskInvites'
 import { useWebsite } from '../lib/WebsiteContext'
+import { triggerFireworks } from '../lib/confetti'
 import './HomePage.css'
 
 export function HomePage() {
   const navigate = useNavigate()
   // Get profile and tasks from WebsiteContext
-  const { profile, tasks, loading: profileLoading, completeTask, uncompleteTask } = useWebsite()
+  const { 
+    profile, 
+    tasks, 
+    partnerTasks,
+    loading: profileLoading, 
+    completeTask, 
+    uncompleteTask,
+    completePartnerTask,
+    uncompletePartnerTask,
+    deletePartnerTask,
+    refetchPartnerTasks,
+  } = useWebsite()
   const userName = profile 
     ? `${profile.first_name} ${profile.last_name}`.trim() || profile.username
     : 'User'
@@ -35,15 +48,15 @@ export function HomePage() {
     completionId: task.completion_id,
   }))
 
-  // Group tasks will come later - for now, empty array
-  const groupTasks: Array<{ id: string; title: string; group: string; completed: boolean }> = []
 
   const [completionModalOpen, setCompletionModalOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<{ id: string; title: string; isGroup: boolean; completionId?: string } | null>(null)
+  const [selectedTask, setSelectedTask] = useState<{ id: string; title: string; isGroup: boolean; taskType: 'personal' | 'partner'; completionId?: string } | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [partnerTaskRefreshKey, setPartnerTaskRefreshKey] = useState(0)
 
-  const handleTaskCompleteClick = (taskId: string, taskTitle: string, isGroup: boolean, completionId?: string) => {
-    setSelectedTask({ id: taskId, title: taskTitle, isGroup, completionId })
+  const handleTaskCompleteClick = (taskId: string, taskTitle: string, isGroup: boolean, completionId?: string, taskType: 'personal' | 'partner' = 'personal') => {
+    console.log('[HomePage] Task complete click:', { taskId, taskTitle, taskType })
+    setSelectedTask({ id: taskId, title: taskTitle, isGroup, taskType, completionId })
     setCompletionModalOpen(true)
   }
 
@@ -53,18 +66,43 @@ export function HomePage() {
     try {
       setIsSubmitting(true)
       
-      // Call completeTask from WebsiteContext
+      // Use the explicit taskType to determine if this is a partner task
+      const isPartnerTask = selectedTask.taskType === 'partner'
+      console.log('[HomePage] Completing task:', { id: selectedTask.id, type: selectedTask.taskType, isPartnerTask })
+      
+      if (isPartnerTask) {
+        // Complete partner task (no caption for partner tasks)
+        const { error } = await completePartnerTask(selectedTask.id, photo)
+        
+        if (error) {
+          console.error('Error completing partner task:', error)
+          alert(error.message || 'Failed to complete partner task')
+          return
+        }
+      } else {
+        // Complete regular task
       const { error } = await completeTask(selectedTask.id, photo, caption)
       
       if (error) {
         console.error('Error completing task:', error)
         alert(error.message || 'Failed to complete task')
         return
+        }
       }
 
-      // Success - close modal
+      // Success - close modal and refresh partner tasks
     setCompletionModalOpen(false)
     setSelectedTask(null)
+      
+      // Trigger confetti celebration
+      triggerFireworks()
+      
+      // Refresh partner tasks to update completion status
+      if (isPartnerTask) {
+        await refetchPartnerTasks()
+        // Increment refresh key to trigger PartnerTaskProgress refresh
+        setPartnerTaskRefreshKey(prev => prev + 1)
+      }
     } catch (err) {
       console.error('Error completing task:', err)
       alert('Failed to complete task')
@@ -73,14 +111,41 @@ export function HomePage() {
     }
   }
 
-  const handleTaskUncomplete = async (taskId: string, completionId: string) => {
-    const confirmed = window.confirm('Are you sure you want to uncheck this task? This will delete your proof photo and post.')
-    if (!confirmed) return
+  const handlePartnerTaskDelete = async (taskId: string) => {
+    const { error } = await deletePartnerTask(taskId)
+    if (error) {
+      console.error('Error deleting partner task:', error)
+      alert(error.message || 'Failed to delete partner task')
+    } else {
+      // Refresh partner tasks to update UI
+      await refetchPartnerTasks()
+      setPartnerTaskRefreshKey(prev => prev + 1)
+    }
+  }
 
+  const handleTaskUncomplete = async (taskId: string, completionId: string, taskType: 'personal' | 'partner' = 'personal') => {
+    console.log('[HomePage] Task uncomplete:', { taskId, completionId, taskType })
+    // Use explicit taskType to determine if this is a partner task
+    const isPartnerTask = taskType === 'partner'
+    
+    if (isPartnerTask) {
+      const today = new Date().toISOString().split('T')[0]
+      const { error } = await uncompletePartnerTask(taskId, today)
+      if (error) {
+        console.error('Error uncompleting partner task:', error)
+        alert(error.message || 'Failed to uncomplete partner task')
+      } else {
+        // Refresh partner tasks to update completion status
+        await refetchPartnerTasks()
+        // Increment refresh key to trigger PartnerTaskProgress refresh
+        setPartnerTaskRefreshKey(prev => prev + 1)
+      }
+    } else {
     const { error } = await uncompleteTask(taskId, completionId)
     if (error) {
       console.error('Error uncompleting task:', error)
       alert(error.message || 'Failed to uncomplete task')
+      }
     }
   }
 
@@ -90,11 +155,21 @@ export function HomePage() {
         <UserHeader userName={userName} />
         
         <div className="homepage-main">
+          <PartnerTaskInvites 
+            onInviteAccepted={() => {
+              // Invites and tasks are already refetched in PartnerTaskInvites component
+            }}
+            onInviteDeclined={() => {
+              // Invites are already refetched in PartnerTaskInvites component
+            }}
+          />
+          
           <TaskList 
             individualTasks={individualTasks}
-            groupTasks={groupTasks}
             onTaskComplete={handleTaskCompleteClick}
             onTaskUncomplete={handleTaskUncomplete}
+            onPartnerTaskDelete={handlePartnerTaskDelete}
+            partnerTaskRefreshKey={partnerTaskRefreshKey}
           />
         </div>
       </div>

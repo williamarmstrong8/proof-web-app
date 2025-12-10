@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
 import { IndividualTask } from './IndividualTask'
-import { GroupTask } from './GroupTask'
+import { PartnerTask } from './PartnerTask'
 import { AddTaskModal } from './AddTaskModal'
 import { EditTaskModal } from './EditTaskModal'
+import { DeletePartnerTaskModal } from './DeletePartnerTaskModal'
 import { useWebsite } from '../lib/WebsiteContext'
 import './TaskList.css'
 
@@ -17,18 +18,29 @@ interface Task {
 
 interface TaskListProps {
   individualTasks: Task[]
-  groupTasks: Task[]
-  onTaskComplete?: (taskId: string, taskTitle: string, isGroup: boolean, completionId?: string) => void
-  onTaskUncomplete?: (taskId: string, completionId: string) => void
+  groupTasks?: Task[] // Made optional since we're removing it
+  onTaskComplete?: (taskId: string, taskTitle: string, isGroup: boolean, completionId?: string, taskType?: 'personal' | 'partner') => void
+  onTaskUncomplete?: (taskId: string, completionId: string, taskType?: 'personal' | 'partner') => void
+  onPartnerTaskDelete?: (taskId: string) => void
+  partnerTaskRefreshKey?: number
 }
 
-export function TaskList({ individualTasks, groupTasks, onTaskComplete, onTaskUncomplete }: TaskListProps) {
-  const { createTask, updateTask, deleteTask, tasks } = useWebsite()
+export function TaskList({ individualTasks, groupTasks = [], onTaskComplete, onTaskUncomplete, onPartnerTaskDelete, partnerTaskRefreshKey }: TaskListProps) {
+  const { 
+    createTask, 
+    updateTask, 
+    deleteTask, 
+    tasks,
+    partnerTasks,
+    createPartnerTask,
+  } = useWebsite()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [editingTask, setEditingTask] = useState<{ id: string; title: string; description?: string | null; showDeleteConfirm?: boolean } | null>(null)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [deletingPartnerTask, setDeletingPartnerTask] = useState<{ id: string; title: string } | null>(null)
+  const [isDeletingPartnerTask, setIsDeletingPartnerTask] = useState(false)
 
   const handleAddTask = async (task: { title: string; isGroup: boolean; groupName?: string }) => {
     if (isCreating) return
@@ -53,6 +65,28 @@ export function TaskList({ individualTasks, groupTasks, onTaskComplete, onTaskUn
     } catch (err) {
       console.error('Error creating task:', err)
       alert('Failed to create task')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleAddPartnerTask = async (task: { title: string; description?: string; partnerId: string }) => {
+    if (isCreating) return
+
+    try {
+      setIsCreating(true)
+      
+      const { error } = await createPartnerTask(task.title, task.description, task.partnerId)
+      if (error) {
+        console.error('Error creating partner task:', error)
+        alert(error.message || 'Failed to create partner task')
+        return
+      }
+      
+      setIsModalOpen(false)
+    } catch (err) {
+      console.error('Error creating partner task:', err)
+      alert('Failed to create partner task')
     } finally {
       setIsCreating(false)
     }
@@ -129,40 +163,114 @@ export function TaskList({ individualTasks, groupTasks, onTaskComplete, onTaskUn
             </button>
           </div>
           <div className="task-items">
-            {individualTasks.map((task) => {
-              const fullTask = tasks.find(t => t.id === task.id)
-              return (
-                <IndividualTask
-                  key={task.id}
-                  id={task.id}
-                  title={task.title}
-                  description={fullTask?.description}
-                  completed={task.completed}
-                  completionId={task.completionId}
-                  onComplete={() => onTaskComplete?.(task.id, task.title, false, task.completionId)}
-                  onUncomplete={(completionId) => onTaskUncomplete?.(task.id, completionId)}
-                  onEdit={() => handleEditTask(task.id, false)}
-                />
-              )
-            })}
+            {individualTasks.length === 0 ? (
+              <div className="task task-individual" style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                cursor: 'default',
+                opacity: 1
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginBottom: '16px' }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    minWidth: '24px',
+                    border: '2px solid rgba(0, 0, 0, 0.2)',
+                    background: 'transparent',
+                    borderRadius: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    marginTop: '1px'
+                  }}>
+                    <span style={{ fontSize: '14px', color: 'rgba(0, 0, 0, 0.3)' }}>✓</span>
+                  </div>
+                  <div className="task-content" style={{ flex: 1 }}>
+                    <h3 className="task-title" style={{ marginBottom: '8px' }}>
+                      Create Your First Habit
+                    </h3>
+                    <p className="task-description" style={{ marginBottom: '16px' }}>
+                      Start building better habits by creating your first task. Track your progress daily and build streaks to stay motivated!
+                    </p>
+                    <button
+                      onClick={() => setIsModalOpen(true)}
+                      style={{
+                        padding: '12px 24px',
+                        background: '#000',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '0',
+                        fontFamily: 'Montserrat, sans-serif',
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = '#333'
+                        e.currentTarget.style.transform = 'translateY(-1px)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '#000'
+                        e.currentTarget.style.transform = 'translateY(0)'
+                      }}
+                    >
+                      Create First Habit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              individualTasks.map((task) => {
+                const fullTask = tasks.find(t => t.id === task.id)
+                return (
+                  <IndividualTask
+                    key={task.id}
+                    id={task.id}
+                    title={task.title}
+                    description={fullTask?.description}
+                    completed={task.completed}
+                    completionId={task.completionId}
+                    onComplete={() => onTaskComplete?.(task.id, task.title, false, task.completionId, 'personal')}
+                    onUncomplete={(completionId) => onTaskUncomplete?.(task.id, completionId, 'personal')}
+                    onEdit={() => handleEditTask(task.id, false)}
+                  />
+                )
+              })
+            )}
           </div>
         </div>
 
+        {partnerTasks.length > 0 && (
         <div className="task-section">
-          <h2 className="task-section-title">Group Tasks</h2>
+            <h2 className="task-section-title">Partner Tasks</h2>
           <div className="task-items">
-            {groupTasks.map((task) => (
-              <GroupTask
+              {partnerTasks
+                .filter(task => task.status === 'accepted' || task.status === 'pending')
+                .map((task) => (
+                  <PartnerTask
                 key={task.id}
-                id={task.id}
-                title={task.title}
-                group={task.group || ''}
-                completed={task.completed}
-                onComplete={() => onTaskComplete?.(task.id, task.title, true)}
+                    partnerTask={task}
+                    refreshKey={partnerTaskRefreshKey}
+                    onComplete={() => onTaskComplete?.(task.id, task.title, false, undefined, 'partner')}
+                    onUncomplete={() => {
+                      const today = new Date().toISOString().split('T')[0]
+                      // Pass date as completionId for partner tasks (HomePage will handle it)
+                      onTaskUncomplete?.(task.id, today, 'partner')
+                    }}
+                    onEdit={() => {
+                      setDeletingPartnerTask({ id: task.id, title: task.title })
+                    }}
               />
             ))}
           </div>
         </div>
+        )}
+
       </div>
 
       <AddTaskModal
@@ -170,6 +278,7 @@ export function TaskList({ individualTasks, groupTasks, onTaskComplete, onTaskUn
         isCreating={isCreating}
         onClose={() => !isCreating && setIsModalOpen(false)}
         onAddTask={handleAddTask}
+        onAddPartnerTask={handleAddPartnerTask}
       />
 
       {editingTask && (
@@ -189,6 +298,31 @@ export function TaskList({ individualTasks, groupTasks, onTaskComplete, onTaskUn
           onUpdate={handleUpdateTask}
           onDelete={async () => {
             await handleDeleteTask(editingTask.id)
+          }}
+        />
+      )}
+
+      {deletingPartnerTask && (
+        <DeletePartnerTaskModal
+          isOpen={!!deletingPartnerTask}
+          taskTitle={deletingPartnerTask.title}
+          isDeleting={isDeletingPartnerTask}
+          onClose={() => {
+            if (!isDeletingPartnerTask) {
+              setDeletingPartnerTask(null)
+            }
+          }}
+          onDelete={async () => {
+            if (!onPartnerTaskDelete || isDeletingPartnerTask) return
+            setIsDeletingPartnerTask(true)
+            try {
+              await onPartnerTaskDelete(deletingPartnerTask.id)
+              setDeletingPartnerTask(null)
+            } catch (err) {
+              console.error('Error deleting partner task:', err)
+            } finally {
+              setIsDeletingPartnerTask(false)
+            }
           }}
         />
       )}

@@ -49,25 +49,48 @@ export function SocialPage() {
         </div>
         
         <div className="social-main">
-          <FriendsSidebar friends={friends} />
+          <FriendsSidebar friends={friends.length > 0 ? friends : [
+            {
+              id: 'mock-friend-1',
+              name: 'Alex Johnson',
+              username: '@alexj',
+              avatar: 'https://ui-avatars.com/api/?name=Alex+Johnson&background=000&color=fff',
+              streak: 7,
+              isOnline: false
+            }
+          ]} />
           
           <div className="social-feed-container">
-            {friends.length === 0 ? (
-              <div style={{ 
-                padding: '40px', 
-                textAlign: 'center',
-                color: 'hsl(var(--muted-foreground))'
-              }}>
-                <p>No friends yet. Add friends to see their posts here!</p>
-              </div>
+            {friends.length === 0 && friendPosts.length === 0 ? (
+              <PostFeed posts={[{
+                id: 'mock-post-1',
+                user: {
+                  id: 'mock-user-1',
+                  name: 'Alex Johnson',
+                  username: '@alexj',
+                  avatar: 'https://ui-avatars.com/api/?name=Alex+Johnson&background=000&color=fff'
+                },
+                task: 'Morning Run',
+                proofImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop',
+                timestamp: '2 hours ago',
+                likes: 12,
+                comments: 3
+              }]} />
             ) : friendPosts.length === 0 ? (
-              <div style={{ 
-                padding: '40px', 
-                textAlign: 'center',
-                color: 'hsl(var(--muted-foreground))'
-              }}>
-                <p>No posts from friends yet. Encourage them to complete tasks!</p>
-              </div>
+              <PostFeed posts={[{
+                id: 'mock-post-1',
+                user: {
+                  id: 'mock-user-1',
+                  name: 'Alex Johnson',
+                  username: '@alexj',
+                  avatar: 'https://ui-avatars.com/api/?name=Alex+Johnson&background=000&color=fff'
+                },
+                task: 'Morning Run',
+                proofImage: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&h=600&fit=crop',
+                timestamp: '2 hours ago',
+                likes: 12,
+                comments: 3
+              }]} />
             ) : (
               <PostFeed posts={friendPosts} />
             )}
