@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback, createContext, useContext, ReactNode,
 import imageCompression from 'browser-image-compression'
 import { supabase } from './supabase'
 import { useAuth } from './auth'
+import {
+  createPartnerTaskAndInvite,
+  getPartnerTasksForProfile,
+  getPendingPartnerTaskInvites,
+  togglePartnerTaskCompletion,
+  deletePartnerTask,
+  type PartnerTask,
+} from './partnerTasks'
+import { LoadingScreen } from '../components/LoadingScreen'
 
 export interface Profile {
   id: string
@@ -79,6 +88,12 @@ export interface SocialPost {
   timestamp: string
   likes: number
   comments: number
+  partner?: {
+    id: string
+    name: string
+    username: string
+    avatar: string
+  }
 }
 
 interface WebsiteData {
@@ -89,6 +104,33 @@ interface WebsiteData {
   incomingRequests: FriendshipWithProfile[]
   outgoingRequests: FriendshipWithProfile[]
   friendPosts: SocialPost[]
+  partnerTasks: (PartnerTask & {
+    completed_today?: boolean
+    completion_id?: string
+    completion_photo_url?: string
+    partner_completed_today?: boolean
+    partner_completion_photo_url?: string
+    current_streak?: number
+    total_completions?: number
+    other_user_id?: string | null
+    other_user_name?: string
+    other_user_profile?: {
+      id: string
+      first_name: string
+      last_name: string
+      username: string
+      avatar_url: string | null
+    } | null
+  })[]
+  partnerTaskInvites: (PartnerTask & {
+    creator_profile?: {
+      id: string
+      first_name: string
+      last_name: string
+      username: string
+      avatar_url: string | null
+    }
+  })[]
 }
 
 interface WebsiteContextType {
@@ -99,6 +141,33 @@ interface WebsiteContextType {
   incomingRequests: FriendshipWithProfile[]
   outgoingRequests: FriendshipWithProfile[]
   friendPosts: SocialPost[]
+  partnerTasks: (PartnerTask & {
+    completed_today?: boolean
+    completion_id?: string
+    completion_photo_url?: string
+    partner_completed_today?: boolean
+    partner_completion_photo_url?: string
+    current_streak?: number
+    total_completions?: number
+    other_user_id?: string | null
+    other_user_name?: string
+    other_user_profile?: {
+      id: string
+      first_name: string
+      last_name: string
+      username: string
+      avatar_url: string | null
+    } | null
+  })[]
+  partnerTaskInvites: (PartnerTask & {
+    creator_profile?: {
+      id: string
+      first_name: string
+      last_name: string
+      username: string
+      avatar_url: string | null
+    }
+  })[]
   loading: boolean
   error: string | null
   refetchProfile: () => Promise<void>
@@ -106,6 +175,8 @@ interface WebsiteContextType {
   refetchPosts: (userId?: string) => Promise<void>
   refetchFriendships: () => Promise<void>
   refetchFriendPosts: () => Promise<void>
+  refetchPartnerTasks: () => Promise<void>
+  refetchPartnerTaskInvites: () => Promise<void>
   updateProfile: (data: {
     username?: string
     first_name?: string
@@ -119,6 +190,11 @@ interface WebsiteContextType {
   deleteTask: (taskId: string) => Promise<{ error: Error | null }>
   completeTask: (taskId: string, photo: File, caption?: string) => Promise<{ error: Error | null }>
   uncompleteTask: (taskId: string, completionId: string) => Promise<{ error: Error | null }>
+  // Partner task functions
+  createPartnerTask: (title: string, description: string | undefined, partnerId: string) => Promise<{ error: Error | null; task?: PartnerTask }>
+  completePartnerTask: (partnerTaskId: string, photo: File) => Promise<{ error: Error | null }>
+  uncompletePartnerTask: (partnerTaskId: string, date: string) => Promise<{ error: Error | null }>
+  deletePartnerTask: (partnerTaskId: string) => Promise<{ error: Error | null }>
   // Friendship functions
   sendFriendRequest: (targetUserId: string) => Promise<{ error: Error | null }>
   acceptFriendRequest: (requesterId: string) => Promise<{ error: Error | null }>
@@ -135,6 +211,8 @@ const defaultWebsiteData: WebsiteData = {
   incomingRequests: [],
   outgoingRequests: [],
   friendPosts: [],
+  partnerTasks: [],
+  partnerTaskInvites: [],
 }
 
 const WebsiteContext = createContext<WebsiteContextType | undefined>(undefined)
@@ -145,6 +223,14 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const fetchedUserIdRef = useRef<string | null>(null)
+  
+  // Don't show loading screen on auth pages (signup, login, create-profile)
+  // Use window.location.pathname since we're outside Router context
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : ''
+  const isAuthPage = pathname === '/signup' || pathname === '/login' || pathname === '/create-profile'
+  
+  // Show loading screen when auth is loading or website data is loading, but not on auth pages
+  const showLoadingScreen = !isAuthPage && (authLoading || loading)
 
   // Helper function to set profile
   const setProfileSuccess = useCallback((profile: Profile | null) => {
@@ -395,7 +481,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
   }, [calculateCurrentStreak, getLocalDateString])
 
-  // Fetch posts (task completions) for a user
+  // Fetch posts (task completions + partner task completions) for a user
   const fetchPosts = useCallback(async (userId?: string): Promise<void> => {
     const targetUserId = userId || user?.id
     if (!targetUserId) {
@@ -405,8 +491,8 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
 
     console.log('[WebsiteContext] Fetching posts from Supabase for user:', targetUserId)
     try {
-      // Get all task completions (posts) for the user, ordered by most recent
-      const { data, error: fetchError } = await supabase
+      // Get all task completions (posts) for the user
+      const { data: taskCompletions, error: taskCompletionsError } = await supabase
         .from('task_completions')
         .select(`
           id,
@@ -422,23 +508,65 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         .eq('user_id', targetUserId)
         .not('photo_url', 'is', null) // Only get completions with photos
         .order('created_at', { ascending: false })
-        .limit(50) // Limit to most recent 50 posts
+        .limit(50)
 
-      if (fetchError) {
-        throw fetchError
+      // Get all partner task completions (posts) for the user
+      const { data: partnerCompletions, error: partnerCompletionsError } = await supabase
+        .from('partner_task_completions')
+        .select(`
+          id,
+          photo_url,
+          completion_date,
+          created_at,
+          partner_task:partner_tasks (
+            id,
+            title,
+            status,
+            creator_profile_id,
+            partner_profile_id
+          )
+        `)
+        .eq('profile_id', targetUserId)
+        .not('photo_url', 'is', null) // Only get completions with photos
+        .eq('partner_task.status', 'accepted') // Only accepted partner tasks
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (taskCompletionsError) {
+        console.error('[WebsiteContext] Error fetching task completions:', taskCompletionsError)
       }
 
-      // Transform task_completions to Post format for PostGrid
-      const posts: Post[] = (data || []).map((completion: any) => ({
-        id: completion.id.toString(),
+      if (partnerCompletionsError) {
+        console.error('[WebsiteContext] Error fetching partner task completions:', partnerCompletionsError)
+      }
+
+      // Transform task_completions to Post format
+      const taskPosts: Post[] = (taskCompletions || []).map((completion: any) => ({
+        id: `task-${completion.id}`,
         image: completion.photo_url || '',
         date: completion.completed_on || completion.created_at,
         task_title: completion.task_title_snapshot || completion.tasks?.title || 'Task',
         caption: completion.caption,
       }))
 
-      console.log('[WebsiteContext] Posts loaded:', posts.length)
-      setWebsiteData(prev => ({ ...prev, posts }))
+      // Transform partner_task_completions to Post format
+      const partnerPosts: Post[] = (partnerCompletions || []).map((completion: any) => ({
+        id: `partner-${completion.id}`,
+        image: completion.photo_url || '',
+        date: completion.completion_date || completion.created_at,
+        task_title: completion.partner_task?.title || 'Partner Task',
+        caption: null, // Partner tasks don't have captions
+      }))
+
+      // Combine and sort by date (most recent first)
+      const allPosts = [...taskPosts, ...partnerPosts].sort((a, b) => {
+        const dateA = new Date(a.date).getTime()
+        const dateB = new Date(b.date).getTime()
+        return dateB - dateA
+      }).slice(0, 50) // Limit to most recent 50 posts total
+
+      console.log('[WebsiteContext] Posts loaded:', allPosts.length, '(tasks:', taskPosts.length, 'partner:', partnerPosts.length, ')')
+      setWebsiteData(prev => ({ ...prev, posts: allPosts }))
     } catch (err) {
       console.error('[WebsiteContext] Error fetching posts:', err)
       // Don't throw - posts are optional
@@ -644,22 +772,105 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         .limit(50)
 
       if (completionsError) {
-        console.error('[WebsiteContext] Error fetching friend posts:', completionsError)
+        console.error('[WebsiteContext] Error fetching friend task completions:', completionsError)
+      }
+
+      // Fetch partner task completions (posts) from friends
+      const { data: partnerCompletionsData, error: partnerCompletionsError } = await supabase
+        .from('partner_task_completions')
+        .select(`
+          id,
+          profile_id,
+          photo_url,
+          completion_date,
+          created_at,
+          partner_task:partner_tasks (
+            id,
+            title,
+            status,
+            creator_profile_id,
+            partner_profile_id
+          )
+        `)
+        .in('profile_id', friendIdsArray)
+        .not('photo_url', 'is', null)
+        .eq('partner_task.status', 'accepted') // Only accepted partner tasks
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (partnerCompletionsError) {
+        console.error('[WebsiteContext] Error fetching friend partner task completions:', partnerCompletionsError)
+      }
+
+      // Combine both types of completions
+      const allCompletions: any[] = []
+      
+      // Add regular task completions
+      if (completionsData) {
+        completionsData.forEach((c: any) => {
+          allCompletions.push({
+            ...c,
+            type: 'task',
+            user_id: c.user_id, // For consistency
+          })
+        })
+      }
+
+      // Add partner task completions (map profile_id to user_id for consistency)
+      // Also determine who the partner is (the other user in the partner task)
+      if (partnerCompletionsData) {
+        partnerCompletionsData.forEach((c: any) => {
+          // Determine the partner user ID (the other user in the partner task)
+          const task = c.partner_task
+          let partnerUserId: string | null = null
+          if (task) {
+            // If the completion is by the creator, the partner is the partner_profile_id
+            // If the completion is by the partner, the partner is the creator_profile_id
+            partnerUserId = c.profile_id === task.creator_profile_id
+              ? task.partner_profile_id
+              : task.creator_profile_id
+          }
+
+          allCompletions.push({
+            id: c.id,
+            user_id: c.profile_id, // Map profile_id to user_id for consistency
+            photo_url: c.photo_url,
+            caption: null, // Partner tasks don't have captions
+            completed_on: c.completion_date,
+            created_at: c.created_at,
+            task_title_snapshot: c.partner_task?.title || 'Partner Task',
+            type: 'partner',
+            partner_user_id: partnerUserId, // Store partner user ID for fetching profile
+          })
+        })
+      }
+
+      if (allCompletions.length === 0) {
         setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
         return
       }
 
-      if (!completionsData || completionsData.length === 0) {
-        setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
-        return
-      }
+      // Sort by created_at (most recent first)
+      allCompletions.sort((a, b) => {
+        const dateA = new Date(a.created_at || a.completed_on).getTime()
+        const dateB = new Date(b.created_at || b.completed_on).getTime()
+        return dateB - dateA
+      })
 
-      // Fetch profiles for all friends who have posts
-      const postUserIds = [...new Set(completionsData.map((c: any) => c.user_id))]
+      // Limit to most recent 50 posts total
+      const limitedCompletions = allCompletions.slice(0, 50)
+
+      // Fetch profiles for all friends who have posts AND their partners
+      const postUserIds = [...new Set(limitedCompletions.map((c: any) => c.user_id))]
+      const partnerUserIds = limitedCompletions
+        .filter((c: any) => c.type === 'partner' && c.partner_user_id)
+        .map((c: any) => c.partner_user_id)
+      const allUserIds = [...new Set([...postUserIds, ...partnerUserIds])]
+
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
-        .in('id', postUserIds)
+        .in('id', allUserIds)
 
       if (profilesError) {
         console.error('[WebsiteContext] Error fetching friend profiles for posts:', profilesError)
@@ -667,11 +878,11 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      // Create profile map
+      // Create profile map for both post authors and partners
       const profileMap = new Map((profilesData || []).map((p: any) => [p.id, p as Profile]))
 
       // Transform to SocialPost format (for PostFeed/PostCard)
-      const friendPosts: SocialPost[] = completionsData
+      const friendPosts: SocialPost[] = limitedCompletions
         .map((completion: any) => {
           const profile = profileMap.get(completion.user_id)
           if (!profile) return null
@@ -699,8 +910,26 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
             timestamp = completionDate.toLocaleDateString()
           }
 
-          return {
-            id: completion.id.toString(),
+          // Get partner info if this is a partner task completion
+          let partnerInfo: SocialPost['partner'] | undefined = undefined
+          if (completion.type === 'partner' && completion.partner_user_id) {
+            const partnerProfile = profileMap.get(completion.partner_user_id)
+            if (partnerProfile) {
+              const partnerDisplayName = partnerProfile.first_name && partnerProfile.last_name
+                ? `${partnerProfile.first_name} ${partnerProfile.last_name}`
+                : partnerProfile.username || partnerProfile.email || 'Unknown User'
+              
+              partnerInfo = {
+                id: partnerProfile.id,
+                name: partnerDisplayName,
+                username: partnerProfile.username ? `@${partnerProfile.username}` : '@no-username',
+                avatar: partnerProfile.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(partnerDisplayName)}`,
+              }
+            }
+          }
+
+          const post: SocialPost = {
+            id: `${completion.type}-${completion.id}`,
             user: {
               id: profile.id,
               name: displayName,
@@ -713,13 +942,280 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
             likes: 0, // TODO: Add likes functionality
             comments: 0, // TODO: Add comments functionality
           }
+
+          if (partnerInfo) {
+            post.partner = partnerInfo
+          }
+
+          return post
         })
-        .filter((p): p is SocialPost => p !== null)
+        .filter((p): p is NonNullable<typeof p> => p !== null)
 
       setWebsiteData(prev => ({ ...prev, friendPosts }))
     } catch (err) {
       console.error('[WebsiteContext] Error fetching friend posts:', err)
       setWebsiteData(prev => ({ ...prev, friendPosts: [] }))
+    }
+  }, [])
+
+  // Fetch partner tasks with completion status and streaks
+  const fetchPartnerTasks = useCallback(async (userId: string): Promise<void> => {
+    try {
+      console.log('[WebsiteContext] Fetching partner tasks for user:', userId)
+      const { data: partnerTasksData, error } = await getPartnerTasksForProfile(userId)
+
+      if (error) {
+        console.error('[WebsiteContext] Error fetching partner tasks:', error)
+        setWebsiteData(prev => ({
+          ...prev,
+          partnerTasks: [],
+        }))
+        return
+      }
+
+      if (!partnerTasksData || partnerTasksData.length === 0) {
+        setWebsiteData(prev => ({
+          ...prev,
+          partnerTasks: [],
+        }))
+        return
+      }
+
+      // Get all partner task completions for this user AND their partners for today
+      const partnerTaskIds = partnerTasksData.map(pt => parseInt(pt.id))
+      const today = getLocalDateString()
+      
+      // Fetch all completions for these tasks (both current user and partners)
+      const { data: allCompletionsData, error: completionsError } = await supabase
+        .from('partner_task_completions')
+        .select('id, partner_task_id, profile_id, completion_date, photo_url')
+        .in('partner_task_id', partnerTaskIds)
+        .eq('completion_date', today) // Only get today's completions for partner status
+        .order('completion_date', { ascending: false })
+
+      // Fetch all historical completions for BOTH users (for streak calculation)
+      // We need both to determine which dates count (only when both completed)
+      const { data: allHistoricalCompletionsData } = await supabase
+        .from('partner_task_completions')
+        .select('id, partner_task_id, profile_id, completion_date, photo_url')
+        .in('partner_task_id', partnerTaskIds)
+        .order('completion_date', { ascending: false })
+
+      if (completionsError) {
+        console.error('[WebsiteContext] Error fetching partner task completions:', completionsError)
+        // Continue with tasks even if completions fail
+      }
+
+      // Group completions by partner_task_id and date
+      // For streaks, we only count dates where BOTH users completed
+      const completionsByTaskAndDate = new Map<string, Set<string>>() // key: "taskId_date", value: Set of profile_ids
+      if (allHistoricalCompletionsData) {
+        allHistoricalCompletionsData.forEach((completion: any) => {
+          const taskId = completion.partner_task_id
+          const date = completion.completion_date
+          const key = `${taskId}_${date}`
+          if (!completionsByTaskAndDate.has(key)) {
+            completionsByTaskAndDate.set(key, new Set())
+          }
+          completionsByTaskAndDate.get(key)!.add(completion.profile_id)
+        })
+      }
+
+      // Group user's completions by partner_task_id (for reference)
+      const userCompletionsByTask = new Map<number, any[]>()
+      if (allHistoricalCompletionsData) {
+        allHistoricalCompletionsData.forEach((completion: any) => {
+          if (completion.profile_id === userId) {
+            const taskId = completion.partner_task_id
+            if (!userCompletionsByTask.has(taskId)) {
+              userCompletionsByTask.set(taskId, [])
+            }
+            userCompletionsByTask.get(taskId)!.push(completion)
+          }
+        })
+      }
+
+      // Group today's completions by partner_task_id (for partner status)
+      const todayCompletionsByTask = new Map<number, any[]>()
+      if (allCompletionsData) {
+        allCompletionsData.forEach((completion: any) => {
+          const taskId = completion.partner_task_id
+          if (!todayCompletionsByTask.has(taskId)) {
+            todayCompletionsByTask.set(taskId, [])
+          }
+          todayCompletionsByTask.get(taskId)!.push(completion)
+        })
+      }
+
+      // Determine other user IDs for all tasks (the partner for each task)
+      const otherUserIds = new Set<string>()
+      partnerTasksData.forEach((task: any) => {
+        const otherUserId = task.creator_profile_id === userId
+          ? task.partner_profile_id
+          : task.creator_profile_id
+        if (otherUserId) {
+          otherUserIds.add(otherUserId)
+        }
+      })
+
+      // Fetch all other user profiles in one query
+      const { data: otherUserProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, username, avatar_url')
+        .in('id', Array.from(otherUserIds))
+
+      if (profilesError) {
+        console.error('[WebsiteContext] Error fetching other user profiles:', profilesError)
+      }
+
+      // Create a map of other user profiles
+      const otherUserProfilesMap = new Map(
+        (otherUserProfiles || []).map((profile: any) => [profile.id, profile])
+      )
+
+      // Process partner tasks with completion status, streaks, partner completion status, and other user profile
+      const partnerTasksWithStatus = partnerTasksData.map((task: any) => {
+        const taskId = parseInt(task.id)
+        const todayCompletions = todayCompletionsByTask.get(taskId) || []
+        
+        // Determine the other user (partner) for this task
+        const otherUserId = task.creator_profile_id === userId
+          ? task.partner_profile_id
+          : task.creator_profile_id
+        const otherUserProfile = otherUserId ? otherUserProfilesMap.get(otherUserId) : null
+        const otherUserName = otherUserProfile
+          ? `${otherUserProfile.first_name} ${otherUserProfile.last_name}`.trim() || otherUserProfile.username
+          : 'Partner'
+        
+        // Get completion dates for streak calculation
+        // Only count dates where BOTH users completed
+        const bothCompletedDates: string[] = []
+        const seenDates = new Set<string>()
+        
+        // Check each date to see if both users completed
+        for (const [key, profileIds] of completionsByTaskAndDate.entries()) {
+          const [taskIdStr, date] = key.split('_')
+          if (parseInt(taskIdStr) === taskId && !seenDates.has(date)) {
+            seenDates.add(date)
+            // Check if both users completed on this date
+            const hasCurrentUser = profileIds.has(userId)
+            const hasPartner = otherUserId ? profileIds.has(otherUserId) : false
+            if (hasCurrentUser && hasPartner) {
+              // Normalize date to YYYY-MM-DD format
+              const normalizedDate = typeof date === 'string' 
+                ? date.split('T')[0].trim()
+                : (() => {
+                    const d = new Date(date)
+                    const year = d.getFullYear()
+                    const month = String(d.getMonth() + 1).padStart(2, '0')
+                    const day = String(d.getDate()).padStart(2, '0')
+                    return `${year}-${month}-${day}`
+                  })()
+              bothCompletedDates.push(normalizedDate)
+            }
+          }
+        }
+        
+        // Sort dates descending (most recent first)
+        bothCompletedDates.sort((a, b) => b.localeCompare(a))
+
+        // Find current user's today completion
+        const userTodayCompletion = todayCompletions.find((tc: any) => tc.profile_id === userId)
+        
+        // Find partner's today completion
+        const partnerTodayCompletion = otherUserId 
+          ? todayCompletions.find((tc: any) => tc.profile_id === otherUserId)
+          : null
+
+        // Calculate current streak - only counting dates where both completed
+        const currentStreak = calculateCurrentStreak(bothCompletedDates)
+
+        return {
+          ...task,
+          completed_today: !!userTodayCompletion,
+          completion_id: userTodayCompletion?.id?.toString(),
+          completion_photo_url: userTodayCompletion?.photo_url,
+          partner_completed_today: !!partnerTodayCompletion,
+          partner_completion_photo_url: partnerTodayCompletion?.photo_url,
+          current_streak: currentStreak,
+          total_completions: bothCompletedDates.length, // Only count days where both completed
+          other_user_id: otherUserId,
+          other_user_name: otherUserName,
+          other_user_profile: otherUserProfile,
+        }
+      })
+
+      console.log('[WebsiteContext] Partner tasks loaded:', partnerTasksWithStatus.length)
+      setWebsiteData(prev => ({
+        ...prev,
+        partnerTasks: partnerTasksWithStatus,
+      }))
+    } catch (err) {
+      console.error('[WebsiteContext] Unexpected error fetching partner tasks:', err)
+      setWebsiteData(prev => ({
+        ...prev,
+        partnerTasks: [],
+      }))
+    }
+  }, [calculateCurrentStreak, getLocalDateString])
+
+  // Fetch partner task invites
+  const fetchPartnerTaskInvites = useCallback(async (userId: string): Promise<void> => {
+    try {
+      console.log('[WebsiteContext] Fetching partner task invites for user:', userId)
+      const { data: invitesData, error } = await getPendingPartnerTaskInvites(userId)
+
+      if (error) {
+        console.error('[WebsiteContext] Error fetching partner task invites:', error)
+        setWebsiteData(prev => ({
+          ...prev,
+          partnerTaskInvites: [],
+        }))
+        return
+      }
+
+      if (!invitesData || invitesData.length === 0) {
+        setWebsiteData(prev => ({
+          ...prev,
+          partnerTaskInvites: [],
+        }))
+        return
+      }
+
+      // Fetch creator profiles for each invite
+      const creatorIds = invitesData.map(invite => invite.creator_profile_id)
+      const { data: creators, error: creatorsError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, username, avatar_url')
+        .in('id', creatorIds)
+
+      if (creatorsError) {
+        console.error('[WebsiteContext] Error fetching creator profiles for invites:', creatorsError)
+        setWebsiteData(prev => ({
+          ...prev,
+          partnerTaskInvites: invitesData.map(invite => ({ ...invite })),
+        }))
+        return
+      }
+
+      // Map creators to invites
+      const creatorMap = new Map(creators?.map(c => [c.id, c]) || [])
+      const invitesWithCreators = invitesData.map(invite => ({
+        ...invite,
+        creator_profile: creatorMap.get(invite.creator_profile_id),
+      }))
+
+      console.log('[WebsiteContext] Partner task invites loaded:', invitesWithCreators.length)
+      setWebsiteData(prev => ({
+        ...prev,
+        partnerTaskInvites: invitesWithCreators,
+      }))
+    } catch (err) {
+      console.error('[WebsiteContext] Unexpected error fetching partner task invites:', err)
+      setWebsiteData(prev => ({
+        ...prev,
+        partnerTaskInvites: [],
+      }))
     }
   }, [])
 
@@ -752,6 +1248,8 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         fetchPosts(user.id),
         fetchFriendships(user.id),
         fetchFriendPosts(user.id),
+        fetchPartnerTasks(user.id),
+        fetchPartnerTaskInvites(user.id),
       ])
 
       console.log('[WebsiteContext] Website data load complete')
@@ -761,7 +1259,7 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, fetchProfile, fetchTasks, fetchPosts, fetchFriendships, fetchFriendPosts])
+  }, [user?.id, fetchProfile, fetchTasks, fetchPosts, fetchFriendships, fetchFriendPosts, fetchPartnerTasks, fetchPartnerTaskInvites])
 
   // Initial data load - only runs once when user becomes available
   // Pattern: Single fetch on mount when user is available, similar to previous project
@@ -824,6 +1322,22 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     }
     await fetchFriendPosts(user.id)
   }, [user, fetchFriendPosts])
+
+  const refetchPartnerTasks = useCallback(async (): Promise<void> => {
+    if (!user) {
+      return
+    }
+    console.log('[WebsiteContext] Manually refetching partner tasks')
+    await fetchPartnerTasks(user.id)
+  }, [user, fetchPartnerTasks])
+
+  const refetchPartnerTaskInvites = useCallback(async (): Promise<void> => {
+    if (!user) {
+      return
+    }
+    console.log('[WebsiteContext] Manually refetching partner task invites')
+    await fetchPartnerTaskInvites(user.id)
+  }, [user, fetchPartnerTaskInvites])
 
   // Update profile function
   const updateProfile = useCallback(async (data: {
@@ -1040,12 +1554,15 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     photo: File,
     caption?: string
   ): Promise<{ error: Error | null }> => {
+    console.log('[WebsiteContext] completeTask called with:', { taskId, hasPhoto: !!photo, caption })
+    
     if (!user) {
+      console.error('[WebsiteContext] No user found, cannot complete task')
       return { error: new Error('Not authenticated') }
     }
 
     try {
-      console.log('[WebsiteContext] Completing task:', taskId)
+      console.log('[WebsiteContext] Completing task:', taskId, 'for user:', user.id)
 
       // 1. Compress image before uploading
       const compressedPhoto = await compressImage(photo)
@@ -1079,24 +1596,81 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
       const task = websiteData.tasks.find(t => t.id === taskId)
       const taskTitle = task?.title || ''
 
-      // 4. Insert completion record
+      // 4. Check if completion already exists for today
       const today = getLocalDateString()
-      const { error: insertError } = await supabase
+      console.log('[WebsiteContext] Checking for existing completion:', { taskId, userId: user.id, date: today })
+      
+      const { data: existingCompletion, error: fetchError } = await supabase
         .from('task_completions')
-        .insert({
-          task_id: parseInt(taskId),
-          user_id: user.id,
-          completed_on: today,
-          photo_url: photoUrl,
-          caption: caption?.trim() || null,
-          task_title_snapshot: taskTitle,
-        })
+        .select('*')
+        .eq('task_id', parseInt(taskId))
+        .eq('user_id', user.id)
+        .eq('completed_on', today)
+        .maybeSingle()
 
-      if (insertError) {
-        console.error('[WebsiteContext] Error inserting completion:', insertError)
-        // Try to clean up uploaded photo
+      if (fetchError) {
+        console.error('[WebsiteContext] Error checking existing completion:', fetchError)
         await supabase.storage.from('task-photos').remove([filePath])
-        return { error: insertError }
+        return { error: new Error(fetchError.message || 'Failed to check existing completion') }
+      }
+
+      if (existingCompletion) {
+        // Update existing completion
+        console.log('[WebsiteContext] Updating existing completion:', existingCompletion.id)
+        const { data: updateData, error: updateError } = await supabase
+          .from('task_completions')
+          .update({
+            photo_url: photoUrl,
+            caption: caption?.trim() || null,
+            task_title_snapshot: taskTitle,
+          })
+          .eq('id', existingCompletion.id)
+          .select()
+          .single()
+
+        if (updateError) {
+          console.error('[WebsiteContext] Error updating completion:', updateError)
+          await supabase.storage.from('task-photos').remove([filePath])
+          return { error: new Error(updateError.message || 'Failed to update task completion') }
+        }
+
+        console.log('[WebsiteContext] Task completion updated successfully:', updateData.id)
+      } else {
+        // Insert new completion
+        console.log('[WebsiteContext] Creating new completion')
+        const { data: insertData, error: insertError } = await supabase
+          .from('task_completions')
+          .insert({
+            task_id: parseInt(taskId),
+            user_id: user.id,
+            completed_on: today,
+            photo_url: photoUrl,
+            caption: caption?.trim() || null,
+            task_title_snapshot: taskTitle,
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          console.error('[WebsiteContext] Error inserting completion:', insertError)
+          console.error('[WebsiteContext] Insert error details:', {
+            message: insertError.message,
+            details: insertError.details,
+            hint: insertError.hint,
+            code: insertError.code
+          })
+          // Try to clean up uploaded photo
+          await supabase.storage.from('task-photos').remove([filePath])
+          return { error: new Error(insertError.message || 'Failed to save task completion') }
+        }
+
+        if (!insertData) {
+          console.error('[WebsiteContext] No data returned from insert, but no error')
+          await supabase.storage.from('task-photos').remove([filePath])
+          return { error: new Error('Failed to save task completion - no data returned') }
+        }
+
+        console.log('[WebsiteContext] Task completion inserted successfully:', insertData.id)
       }
 
       console.log('[WebsiteContext] Task completed successfully')
@@ -1299,21 +1873,30 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
         return { error: null, data: [] }
       }
 
-      const query = `%${searchQuery.toLowerCase()}%`
+      const searchTerm = searchQuery.toLowerCase().trim()
+      const pattern = `%${searchTerm}%`
 
+      console.log('[WebsiteContext] Searching for:', searchTerm)
+
+      // Search ONLY username, first_name, and last_name (NOT email)
+      // Email causes false positives (e.g., "c" matches "user@company.com")
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .neq('id', user.id)
-        .or(`username.ilike.${query},first_name.ilike.${query},last_name.ilike.${query},email.ilike.${query}`)
+        .or(`username.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`)
         .limit(20)
 
       if (error) {
+        console.error('[WebsiteContext] Search error:', error)
         return { error: new Error(error.message) }
       }
 
+      console.log('[WebsiteContext] Found', data?.length || 0, 'results')
+
       return { error: null, data: data as Profile[] || [] }
     } catch (err) {
+      console.error('[WebsiteContext] Unexpected search error:', err)
       return { error: err instanceof Error ? err : new Error('Failed to search users') }
     }
   }, [user])
@@ -1340,6 +1923,170 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     return 'none'
   }, [websiteData.friends, websiteData.incomingRequests, websiteData.outgoingRequests])
 
+  // Create partner task function
+  const createPartnerTask = useCallback(async (
+    title: string,
+    description: string | undefined,
+    inviteeId: string
+  ): Promise<{ error: Error | null; task?: PartnerTask }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      console.log('[WebsiteContext] Creating partner task invite:', title, 'for invitee:', inviteeId)
+      const { data, error } = await createPartnerTaskAndInvite(
+        user.id,
+        inviteeId,
+        title,
+        description
+      )
+
+      if (error) {
+        console.error('[WebsiteContext] Error creating partner task:', error)
+        return { error }
+      }
+
+      console.log('[WebsiteContext] Partner task created successfully')
+      // Refetch partner tasks to get updated list
+      await refetchPartnerTasks()
+
+      return { error: null, task: data }
+    } catch (err) {
+      console.error('[WebsiteContext] Error creating partner task:', err)
+      return { error: err instanceof Error ? err : new Error('Failed to create partner task') }
+    }
+  }, [user, refetchPartnerTasks])
+
+  // Complete partner task function (with photo upload)
+  const completePartnerTask = useCallback(async (
+    partnerTaskId: string,
+    photo: File
+  ): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      console.log('[WebsiteContext] Completing partner task:', partnerTaskId)
+
+      // 1. Compress image before uploading
+      const compressedPhoto = await compressImage(photo)
+
+      // 2. Upload compressed photo to Supabase Storage
+      const timestamp = Date.now()
+      const fileExt = compressedPhoto.name.split('.').pop() || 'jpg'
+      const fileName = `${timestamp}_${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${user.id}/${fileName}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('task-photos')
+        .upload(filePath, compressedPhoto, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('[WebsiteContext] Error uploading photo:', uploadError)
+        return { error: new Error('Failed to upload photo') }
+      }
+
+      // 3. Get public URL for the uploaded photo
+      const { data: urlData } = supabase.storage
+        .from('task-photos')
+        .getPublicUrl(uploadData.path)
+
+      const photoUrl = urlData.publicUrl
+
+      // 4. Toggle completion (insert)
+      const today = new Date().toISOString().split('T')[0]
+      const { error: toggleError } = await togglePartnerTaskCompletion(
+        user.id,
+        partnerTaskId,
+        today,
+        photoUrl
+      )
+
+      if (toggleError) {
+        console.error('[WebsiteContext] Error completing partner task:', toggleError)
+        return { error: toggleError }
+      }
+
+      console.log('[WebsiteContext] Partner task completed successfully')
+      // Refetch partner tasks to update UI
+      await refetchPartnerTasks()
+      return { error: null }
+    } catch (err) {
+      console.error('[WebsiteContext] Error completing partner task:', err)
+      return { error: err instanceof Error ? err : new Error('Failed to complete partner task') }
+    }
+  }, [user, refetchPartnerTasks])
+
+  // Uncomplete partner task function
+  const uncompletePartnerTask = useCallback(async (
+    partnerTaskId: string,
+    date: string
+  ): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      console.log('[WebsiteContext] Uncompleting partner task:', partnerTaskId)
+
+      // Toggle completion (delete)
+      const { error: toggleError } = await togglePartnerTaskCompletion(
+        user.id,
+        partnerTaskId,
+        date
+      )
+
+      if (toggleError) {
+        console.error('[WebsiteContext] Error uncompleting partner task:', toggleError)
+        return { error: toggleError }
+      }
+
+      console.log('[WebsiteContext] Partner task uncompleted successfully')
+      // Refetch partner tasks to update UI
+      await refetchPartnerTasks()
+      return { error: null }
+    } catch (err) {
+      console.error('[WebsiteContext] Error uncompleting partner task:', err)
+      return { error: err instanceof Error ? err : new Error('Failed to uncomplete partner task') }
+    }
+  }, [user, refetchPartnerTasks])
+
+  // Delete partner task function
+  const deletePartnerTaskFn = useCallback(async (
+    partnerTaskId: string
+  ): Promise<{ error: Error | null }> => {
+    if (!user) {
+      return { error: new Error('Not authenticated') }
+    }
+
+    try {
+      console.log('[WebsiteContext] Deleting partner task:', partnerTaskId)
+
+      const { error: deleteError } = await deletePartnerTask(
+        user.id,
+        partnerTaskId
+      )
+
+      if (deleteError) {
+        console.error('[WebsiteContext] Error deleting partner task:', deleteError)
+        return { error: deleteError }
+      }
+
+      console.log('[WebsiteContext] Partner task deleted successfully')
+      // Refetch partner tasks to update UI
+      await refetchPartnerTasks()
+      return { error: null }
+    } catch (err) {
+      console.error('[WebsiteContext] Error deleting partner task:', err)
+      return { error: err instanceof Error ? err : new Error('Failed to delete partner task') }
+    }
+  }, [user, refetchPartnerTasks])
+
   const value: WebsiteContextType = {
     profile: websiteData.profile,
     tasks: websiteData.tasks,
@@ -1348,6 +2095,8 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     incomingRequests: websiteData.incomingRequests,
     outgoingRequests: websiteData.outgoingRequests,
     friendPosts: websiteData.friendPosts,
+    partnerTasks: websiteData.partnerTasks,
+    partnerTaskInvites: websiteData.partnerTaskInvites,
     loading,
     error,
     refetchProfile,
@@ -1355,12 +2104,18 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     refetchPosts,
     refetchFriendships,
     refetchFriendPosts,
+    refetchPartnerTasks,
+    refetchPartnerTaskInvites,
     updateProfile,
     createTask,
     updateTask,
     deleteTask,
     completeTask,
     uncompleteTask,
+    createPartnerTask,
+    completePartnerTask,
+    uncompletePartnerTask,
+    deletePartnerTask: deletePartnerTaskFn,
     sendFriendRequest,
     acceptFriendRequest,
     unfriendOrCancel,
@@ -1368,7 +2123,14 @@ export function WebsiteProvider({ children }: { children: ReactNode }) {
     getFriendshipStatus,
   }
 
-  return <WebsiteContext.Provider value={value}>{children}</WebsiteContext.Provider>
+  return (
+    <>
+      <LoadingScreen isLoading={showLoadingScreen} />
+      <WebsiteContext.Provider value={value}>
+        {children}
+      </WebsiteContext.Provider>
+    </>
+  )
 }
 
 export function useWebsite() {

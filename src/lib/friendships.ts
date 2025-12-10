@@ -556,8 +556,9 @@ export async function getFriendshipBetweenUsers(
 }
 
 /**
- * Search for users by username, first name, last name, or email.
+ * Search for users by username, first name, or last name.
  * Returns matching profiles (excludes current user).
+ * Email is excluded from search to prevent false positives.
  * 
  * @returns { error, data } - Returns list of matching profiles
  */
@@ -573,13 +574,16 @@ export async function searchUsers(
       return { error: null, data: [] }
     }
 
-    const query = `%${searchQuery.toLowerCase()}%`
+    const searchTerm = searchQuery.toLowerCase().trim()
+    const pattern = `%${searchTerm}%`
 
+    // Search ONLY username, first_name, and last_name (NOT email)
+    // Email causes false positives (e.g., "c" matches "user@company.com")
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .neq('id', currentUserId) // Exclude current user
-      .or(`username.ilike.${query},first_name.ilike.${query},last_name.ilike.${query},email.ilike.${query}`)
+      .or(`username.ilike.${pattern},first_name.ilike.${pattern},last_name.ilike.${pattern}`)
       .limit(limit)
 
     if (error) {
