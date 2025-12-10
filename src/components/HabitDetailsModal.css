@@ -1,0 +1,18 @@
+/* Make calendar read-only - disable all interactions */
+.habit-calendar-readonly .rdp-day,
+.habit-calendar-readonly .rdp-day_button {
+  pointer-events: none !important;
+  cursor: default !important;
+}
+
+.habit-calendar-readonly .rdp-day_button:hover {
+  background-color: inherit !important;
+}
+
+.habit-calendar-readonly .rdp-day_button:focus {
+  outline: none !important;
+}
+
+.habit-calendar-readonly .rdp-day_button:focus-visible {
+  outline: none !important;
+}

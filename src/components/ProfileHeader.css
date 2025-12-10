@@ -46,6 +46,15 @@
   gap: 4px;
 }
 
+.profile-stat-clickable {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.profile-stat-clickable:hover {
+  opacity: 0.7;
+}
+
 .profile-stat-value {
   font-family: 'Archivo Black', sans-serif;
   font-size: 24px;

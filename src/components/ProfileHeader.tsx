@@ -11,6 +11,7 @@ interface UserData {
     posts: number
     habits: number
     streak: number
+    friends?: number
   }
 }
 
@@ -35,6 +36,10 @@ export function ProfileHeader({ userData }: ProfileHeaderProps) {
     navigate('/add-friends')
   }
 
+  const handleFriendsClick = () => {
+    navigate('/friends')
+  }
+
   return (
     <div className="profile-header">
       <div className="profile-header-top">
@@ -55,6 +60,24 @@ export function ProfileHeader({ userData }: ProfileHeaderProps) {
             <span className="profile-stat-value">{userData.stats.streak}</span>
             <span className="profile-stat-label">Streak</span>
           </div>
+          {userData.stats.friends !== undefined && (
+            <div 
+              className="profile-stat profile-stat-clickable"
+              onClick={handleFriendsClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault()
+                  handleFriendsClick()
+                }
+              }}
+              aria-label={`View ${userData.stats.friends} friends`}
+            >
+              <span className="profile-stat-value">{userData.stats.friends}</span>
+              <span className="profile-stat-label">Friends</span>
+            </div>
+          )}
         </div>
       </div>
       
