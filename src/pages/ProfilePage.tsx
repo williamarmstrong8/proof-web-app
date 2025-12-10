@@ -1,12 +1,100 @@
+import { useState, useEffect } from 'react'
 import { BottomNav } from '../components/BottomNav'
 import { ProfileHeader } from '../components/ProfileHeader'
 import { PostGrid } from '../components/PostGrid'
 import { HabitHistory } from '../components/HabitHistory'
 import { useWebsite } from '../lib/WebsiteContext'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../lib/auth'
 import './ProfilePage.css'
 
 export function ProfilePage() {
-  const { profile, tasks, partnerTasks, posts, loading } = useWebsite()
+  const { profile, tasks, partnerTasks, posts, friends, loading } = useWebsite()
+  const { user } = useAuth()
+  const [completionDatesMap, setCompletionDatesMap] = useState<Map<string, (Date | string)[]>>(new Map())
+
+  // Fetch completion dates for all habits
+  useEffect(() => {
+    if (!user?.id || loading) return
+
+    const fetchCompletionDates = async () => {
+      const datesMap = new Map<string, (Date | string)[]>()
+
+      // Fetch completion dates for regular tasks
+      if (tasks.length > 0) {
+        const taskIds = tasks.map(t => parseInt(t.id))
+        const { data: taskCompletions } = await supabase
+          .from('task_completions')
+          .select('task_id, completed_on')
+          .eq('user_id', user.id)
+          .in('task_id', taskIds)
+
+        if (taskCompletions) {
+          taskCompletions.forEach((completion: any) => {
+            const taskId = completion.task_id.toString()
+            if (!datesMap.has(taskId)) {
+              datesMap.set(taskId, [])
+            }
+            const date = completion.completed_on
+            datesMap.get(taskId)!.push(date)
+          })
+        }
+      }
+
+      // Fetch completion dates for partner tasks
+      const acceptedPartnerTasks = partnerTasks.filter(pt => pt.status === 'accepted')
+      if (acceptedPartnerTasks.length > 0) {
+        const partnerTaskIds = acceptedPartnerTasks.map(pt => parseInt(pt.id))
+        
+        // Get all completions for these partner tasks
+        const { data: partnerCompletions } = await supabase
+          .from('partner_task_completions')
+          .select('partner_task_id, profile_id, completion_date')
+          .in('partner_task_id', partnerTaskIds)
+
+        if (partnerCompletions) {
+          // Group by task and date to find dates where both users completed
+          const completionsByTaskAndDate = new Map<string, Set<string>>()
+          partnerCompletions.forEach((completion: any) => {
+            const key = `${completion.partner_task_id}_${completion.completion_date}`
+            if (!completionsByTaskAndDate.has(key)) {
+              completionsByTaskAndDate.set(key, new Set())
+            }
+            completionsByTaskAndDate.get(key)!.add(completion.profile_id)
+          })
+
+          // For each partner task, find dates where both users completed
+          acceptedPartnerTasks.forEach(partnerTask => {
+            const taskId = `partner-${partnerTask.id}`
+            const otherUserId = partnerTask.other_user_id
+            
+            if (!otherUserId) return
+
+            const bothCompletedDates: (Date | string)[] = []
+            const seenDates = new Set<string>()
+
+            completionsByTaskAndDate.forEach((profileIds, key) => {
+              const [taskIdStr, date] = key.split('_')
+              if (parseInt(taskIdStr) === parseInt(partnerTask.id) && !seenDates.has(date)) {
+                seenDates.add(date)
+                const hasCurrentUser = profileIds.has(user.id)
+                const hasPartner = profileIds.has(otherUserId)
+                if (hasCurrentUser && hasPartner) {
+                  bothCompletedDates.push(date)
+                }
+              }
+            })
+
+            datesMap.set(taskId, bothCompletedDates)
+          })
+        }
+      }
+
+      setCompletionDatesMap(datesMap)
+    }
+
+    fetchCompletionDates()
+  }, [user?.id, tasks, partnerTasks, loading])
 
   // Convert tasks to habit history format (using real data from database)
   const taskHabits = tasks.map(task => ({
@@ -15,6 +103,7 @@ export function ProfilePage() {
     streak: task.current_streak || 0,
     total: task.total_completions || 0,
     color: '#000',
+    completionDates: completionDatesMap.get(task.id) || [],
   }))
 
   // Convert partner tasks to habit history format
@@ -26,6 +115,7 @@ export function ProfilePage() {
       streak: partnerTask.current_streak || 0,
       total: partnerTask.total_completions || 0,
       color: '#000',
+      completionDates: completionDatesMap.get(`partner-${partnerTask.id}`) || [],
     }))
 
   // Combine both types of habits
@@ -74,6 +164,7 @@ export function ProfilePage() {
         ...partnerTasks.filter(pt => pt.status === 'accepted').map(pt => pt.current_streak || 0),
         0
       ), // Longest current streak across all tasks
+      friends: friends.length, // Friend count
     },
   }
 

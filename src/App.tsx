@@ -11,6 +11,7 @@ import { CreatePostPage } from './pages/CreatePostPage'
 import { ComposePostPage } from './pages/ComposePostPage'
 import { EditProfilePage } from './pages/EditProfilePage'
 import { AddFriendsPage } from './pages/AddFriendsPage'
+import { FriendsPage } from './pages/FriendsPage'
 import { UserProfilePage } from './pages/UserProfilePage'
 import { ScrollToTop } from './components/ScrollToTop'
 import './App.css'
@@ -28,6 +29,7 @@ function App() {
         <Route path="/challenges" element={<ChallengesPage />} />
         <Route path="/social" element={<SocialPage />} />
         <Route path="/add-friends" element={<AddFriendsPage />} />
+        <Route path="/friends" element={<FriendsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/user/:userId" element={<UserProfilePage />} />
         <Route path="/edit-profile" element={<EditProfilePage />} />

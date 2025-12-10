@@ -1,0 +1,119 @@
+.friends-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: hsl(var(--background));
+}
+
+.friends-page-content {
+  flex: 1;
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.friends-page-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.friends-page-back-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border: 2px solid hsl(var(--border));
+  border-radius: 0;
+  cursor: pointer;
+  color: hsl(var(--foreground));
+  transition: all 0.2s ease;
+}
+
+.friends-page-back-button:hover {
+  background: hsl(var(--accent));
+  border-color: hsl(var(--foreground));
+}
+
+.friends-page-title {
+  font-family: 'Archivo Black', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: hsl(var(--foreground));
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+}
+
+.friends-page-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.friends-page-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.friends-page-empty-icon {
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.friends-page-empty-text {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  margin: 0 0 8px 0;
+}
+
+.friends-page-empty-hint {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  margin: 0 0 24px 0;
+}
+
+.friends-page-add-button {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 10px 24px;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border: 2px solid hsl(var(--foreground));
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.friends-page-add-button:hover {
+  background: transparent;
+  color: hsl(var(--foreground));
+}
+
+@media (max-width: 768px) {
+  .friends-page-content {
+    padding: 16px;
+  }
+
+  .friends-page-title {
+    font-size: 20px;
+  }
+}

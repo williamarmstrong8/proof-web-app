@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import './HabitHistory.css'
+import { HabitDetailsModal } from './HabitDetailsModal'
 
 interface Habit {
   id: string
@@ -6,6 +8,7 @@ interface Habit {
   streak: number
   total: number
   color: string
+  completionDates?: (Date | string)[]
 }
 
 interface HabitHistoryProps {
@@ -55,33 +58,64 @@ function calculateTierInfo(streak: number): TierInfo {
 }
 
 export function HabitHistory({ habits }: HabitHistoryProps) {
+  const [openHabitId, setOpenHabitId] = useState<string | null>(null)
+
+  const handleOpenModal = (habitId: string) => {
+    setOpenHabitId(habitId)
+  }
+
+  const handleCloseModal = () => {
+    setOpenHabitId(null)
+  }
+
   return (
     <div className="habit-history-section">
       <h2 className="habit-history-title">Habit History</h2>
       <div className="habit-list">
         {habits.map((habit) => {
           const tierInfo = calculateTierInfo(habit.streak)
+          const isModalOpen = openHabitId === habit.id
           
           return (
-            <div 
-              key={habit.id} 
-              className={`habit-item habit-item-${tierInfo.tier}`}
-            >
-              <div className="habit-header">
-                <h3 className="habit-name">{habit.name}</h3>
-                <div className="habit-stats">
-                  <span className="habit-streak">{habit.streak} {habit.streak === 1 ? 'day' : 'days'} streak</span>
-                  <span className="habit-total">{habit.total} total</span>
+            <div key={habit.id}>
+              <div 
+                className={`habit-item habit-item-${tierInfo.tier}`}
+                onClick={() => handleOpenModal(habit.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleOpenModal(habit.id)
+                  }
+                }}
+                aria-label={`View details for ${habit.name}`}
+              >
+                <div className="habit-header">
+                  <h3 className="habit-name">{habit.name}</h3>
+                  <div className="habit-stats">
+                    <span className="habit-streak">{habit.streak} {habit.streak === 1 ? 'day' : 'days'} streak</span>
+                    <span className="habit-total">{habit.total} total</span>
+                  </div>
+                </div>
+                <div className="habit-progress-container">
+                  <div 
+                    className={`habit-progress-bar habit-progress-bar-${tierInfo.tier}`}
+                    style={{ 
+                      width: `${tierInfo.progress}%`,
+                    }}
+                  />
                 </div>
               </div>
-              <div className="habit-progress-container">
-                <div 
-                  className={`habit-progress-bar habit-progress-bar-${tierInfo.tier}`}
-                  style={{ 
-                    width: `${tierInfo.progress}%`,
-                  }}
-                />
-              </div>
+              
+              <HabitDetailsModal
+                isOpen={isModalOpen}
+                onClose={handleCloseModal}
+                habitName={habit.name}
+                streak={habit.streak}
+                total={habit.total}
+                completionDates={habit.completionDates || []}
+              />
             </div>
           )
         })}
